@@ -1,0 +1,7 @@
+name: FrizzlenShop
+version: '1.0-SNAPSHOT'
+main: org.frizzlenpop.frizzlenShop.FrizzlenShop
+api-version: '1.21'
+load: STARTUP
+authors: [ frizzlenpop ]
+description: A Plugin for Selling items in the game
