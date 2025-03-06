@@ -5,3 +5,36 @@ api-version: '1.21'
 load: STARTUP
 authors: [ frizzlenpop ]
 description: A Plugin for Selling items in the game
+depend: [FrizzlenEco]
+commands:
+  shop:
+    description: Main command for the FrizzlenShop plugin
+    usage: /shop
+    aliases: [fshop, fs]
+  shopadmin:
+    description: Admin commands for the FrizzlenShop plugin
+    usage: /shopadmin
+    aliases: [fsadmin, fsa]
+permissions:
+  frizzlenshop.use:
+    description: Allows use of the shop system
+    default: true
+  frizzlenshop.create:
+    description: Allows creation of personal shops
+    default: true
+  frizzlenshop.sell:
+    description: Allows selling items to shops
+    default: true
+  frizzlenshop.buy:
+    description: Allows buying items from shops
+    default: true
+  frizzlenshop.admin:
+    description: Full access to all shop features
+    default: op
+    children:
+      frizzlenshop.admin.create: true
+      frizzlenshop.admin.edit: true
+      frizzlenshop.admin.remove: true
+      frizzlenshop.admin.prices: true
+      frizzlenshop.admin.logs: true
+      frizzlenshop.admin.tax: true

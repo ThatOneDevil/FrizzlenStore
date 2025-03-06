@@ -68,5 +68,12 @@
             <version>1.21.4-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.frizzlenpop</groupId>
+            <artifactId>FrizzlenEco</artifactId>
+            <version>1.0-SNAPSHOT</version>
+            <systemPath>C:/Users/Ben/Documents/Development/townai/FrizzlenEco/target/FrizzlenEco-1.0-SNAPSHOT.jar</systemPath>
+            <scope>system</scope>
+        </dependency>
     </dependencies>
 </project>

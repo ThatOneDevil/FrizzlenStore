@@ -1,0 +1,147 @@
+# FrizzlenShop Configuration
+
+# General Settings
+general:
+  # Default shop tax rate (percentage)
+  default-tax-rate: 5.0
+  # Default currency (must be defined in FrizzlenEco)
+  default-currency: "dollars"
+  # Whether to enable shop maintenance mode (admins only)
+  maintenance-mode: false
+  # Shop creation cost
+  shop-creation-cost: 1000.0
+  # Maximum number of shops per player (0 for unlimited)
+  max-shops-per-player: 3
+
+# Admin Shop Settings
+admin-shops:
+  # Whether admin shops are enabled
+  enabled: true
+  # Whether admin shops have infinite stock
+  infinite-stock: true
+  # Admin shop tax rate (percentage)
+  tax-rate: 3.0
+  # Admin shop prefixes in GUI
+  prefix: "&c[Admin] "
+
+# Player Shop Settings
+player-shops:
+  # Whether player shops are enabled
+  enabled: true
+  # Default player shop tax rate (percentage)
+  tax-rate: 7.0
+  # Maximum items per player shop
+  max-items: 27
+  # Shop rental period in days (0 for permanent)
+  rental-period: 7
+  # Shop rental cost per period
+  rental-cost: 500.0
+  # Whether to automatically renew rentals if player has funds
+  auto-renew: true
+
+# GUI Settings
+gui:
+  # Main menu title
+  main-title: "&6&lFRIZZLEN SHOP"
+  # Category menu title format
+  category-title: "&6&l{CATEGORY} CATEGORY"
+  # Item detail menu title format
+  item-title: "&6&l{ITEM}"
+  # My shops menu title
+  my-shops-title: "&6&lMY SHOPS"
+  # Create shop menu title format
+  create-shop-title: "&6&lCREATE SHOP - STEP {STEP}/4"
+  # Shop admin menu title
+  admin-title: "&4&lSHOP ADMIN"
+  # Number of items per page
+  items-per-page: 21
+  # Whether to show item enchantments in GUI
+  show-enchantments: true
+  # Whether to show item lore in GUI
+  show-lore: true
+  # Whether to show item durability in GUI
+  show-durability: true
+
+# Category Settings
+categories:
+  tools:
+    icon: DIAMOND_PICKAXE
+    name: "&e&lTools"
+    description: "Mining and crafting tools"
+    position: 0
+  food:
+    icon: BREAD
+    name: "&e&lFood"
+    description: "Edible items"
+    position: 1
+  potions:
+    icon: POTION
+    name: "&e&lPotions"
+    description: "Potions and brewing items"
+    position: 2
+  armor:
+    icon: DIAMOND_CHESTPLATE
+    name: "&e&lArmor"
+    description: "Protective equipment"
+    position: 3
+  valuables:
+    icon: DIAMOND
+    name: "&e&lValuables"
+    description: "Rare and valuable items"
+    position: 4
+  blocks:
+    icon: STONE
+    name: "&e&lBlocks"
+    description: "Building blocks"
+    position: 5
+  misc:
+    icon: CHEST
+    name: "&e&lMisc"
+    description: "Miscellaneous items"
+    position: 6
+
+# Database Settings
+database:
+  # Database type: SQLITE, MYSQL
+  type: "SQLITE"
+  # MySQL settings (if using MySQL)
+  mysql:
+    host: "localhost"
+    port: 3306
+    database: "frizzlenshop"
+    username: "root"
+    password: "password"
+    table-prefix: "fs_"
+
+# Logging Settings
+logging:
+  # Whether to log transactions
+  log-transactions: true
+  # Whether to log shop creations and deletions
+  log-shop-changes: true
+  # Whether to log price changes
+  log-price-changes: true
+  # Log retention period in days (0 for unlimited)
+  retention-period: 30
+
+# Permission Settings
+permissions:
+  # Shop creation limit permission tiers
+  shop-limit-tiers:
+    - "frizzlenshop.create.limit.1"
+    - "frizzlenshop.create.limit.3"
+    - "frizzlenshop.create.limit.5"
+    - "frizzlenshop.create.limit.10"
+  # Shop size limit permission tiers
+  shop-size-tiers:
+    - "frizzlenshop.create.size.9"
+    - "frizzlenshop.create.size.18"
+    - "frizzlenshop.create.size.27"
+    - "frizzlenshop.create.size.54"
+
+# Integration Settings
+integrations:
+  # Whether to hook into PAPI for placeholders
+  placeholderapi: true
+  # Whether to hook into Vault as a fallback economy
+  vault: false 
