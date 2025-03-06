@@ -5,6 +5,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
@@ -234,7 +235,7 @@ public class GuiManager {
      * @param slot The slot that was clicked
      * @return True if the click was handled, false otherwise
      */
-    public boolean handleClick(Player player, Inventory inventory, int slot) {
+    public boolean handleClick(Player player, Inventory inventory, int slot, ClickType clickType) {
         UUID playerUuid = player.getUniqueId();
         MenuData data = menuData.get(playerUuid);
         
@@ -265,7 +266,7 @@ public class GuiManager {
                 return ShopManagementMenuHandler.handleClick(this, plugin, player, slot, data);
                 
             case ITEM_MANAGEMENT:
-                return ItemManagementMenuHandler.handleClick(this, plugin, player, slot, data);
+                return ItemManagementMenuHandler.handleClick(this, plugin, player, slot, data, clickType);
                 
             case SHOP_ITEMS:
                 return ShopItemsMenuHandler.handleClick(this, plugin, player, slot, data);
