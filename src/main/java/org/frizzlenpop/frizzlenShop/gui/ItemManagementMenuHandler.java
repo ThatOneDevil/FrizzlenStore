@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -111,7 +112,7 @@ public class ItemManagementMenuHandler {
      * @param menuData The menu data
      * @return True if the click was handled, false otherwise
      */
-    public static boolean handleClick(GuiManager guiManager, FrizzlenShop plugin, Player player, int slot, MenuData menuData) {
+    public static boolean handleClick(GuiManager guiManager, FrizzlenShop plugin, Player player, int slot, MenuData menuData, ClickType clickType) {
         // Get shop and item IDs from menu data
         UUID shopId = menuData.getUUID("shopId");
         UUID itemId = menuData.getUUID("itemId");
@@ -150,9 +151,21 @@ public class ItemManagementMenuHandler {
             case 22: // Change Stock
                 // Left-click adds stock, right-click removes stock
                 // For simplicity, just update stock here
-                int newStock = shopItem.getStock() + 10;
+
+                int newStock = 0;
+                if (clickType == ClickType.LEFT) {
+                    newStock = shopItem.getStock() + 10;
+                    shopItem.setStock(newStock);
+                } else if (clickType == ClickType.RIGHT) {
+                    newStock = shopItem.getStock() - 10;
+                }
+
+                if (newStock < 10) {
+                    newStock = 1;
+                }
+
                 shopItem.setStock(newStock);
-                
+
                 // Refresh menu
                 openItemManagementMenu(guiManager, plugin, player, shop, shopItem);
                 return true;

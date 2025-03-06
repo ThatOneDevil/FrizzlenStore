@@ -86,7 +86,7 @@ public class ShopItemsMenuHandler {
         ItemStack item = player.getInventory().getItemInMainHand();
         
         // Check if the player is holding an item
-        if (item == null || item.getType() == Material.AIR) {
+        if (item.isEmpty()) {
             MessageUtils.sendErrorMessage(player, "You must be holding an item to add it to the shop.");
             return;
         }

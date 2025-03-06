@@ -43,7 +43,7 @@ public class InventoryListener implements Listener {
         event.setCancelled(true);
 
         // Handle the click in the GUI manager
-        plugin.getGuiManager().handleClick(player, event.getClickedInventory(), event.getSlot());
+        plugin.getGuiManager().handleClick(player, event.getClickedInventory(), event.getSlot(), event.getClick());
     }
 
     @EventHandler
