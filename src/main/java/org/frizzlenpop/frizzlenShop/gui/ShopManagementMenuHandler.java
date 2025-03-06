@@ -9,6 +9,7 @@ import org.frizzlenpop.frizzlenShop.FrizzlenShop;
 import org.frizzlenpop.frizzlenShop.shops.Shop;
 import org.frizzlenpop.frizzlenShop.shops.ShopItem;
 import org.frizzlenpop.frizzlenShop.utils.MessageUtils;
+import org.frizzlenpop.frizzlenShop.utils.ItemLoreUtils;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -199,9 +200,30 @@ public class ShopManagementMenuHandler {
         for (int i = 0; i < items.size() && i < 45; i++) {
             ShopItem item = items.get(i);
             
+            // Clone the ItemStack to modify it
             ItemStack displayItem = item.getItem().clone();
-            // TODO: Add price and stock info to lore
             
+            // Get existing lore or create new list
+            List<String> lore = ItemLoreUtils.getLore(displayItem);
+            if (lore == null) {
+                lore = new java.util.ArrayList<>();
+            } else {
+                lore.add(""); // Add a blank line to separate original lore from shop info
+            }
+            
+            // Add shop information to lore
+            lore.add(MessageUtils.colorize("&7Price: &6" + plugin.getEconomyManager().formatCurrency(item.getPrice(), plugin.getEconomyManager().getDefaultCurrency())));
+            if (shop.isAdminShop()) {
+                lore.add(MessageUtils.colorize("&7Stock: &fUnlimited"));
+            } else {
+                lore.add(MessageUtils.colorize("&7Stock: &f" + item.getStock()));
+            }
+            lore.add(MessageUtils.colorize("&eClick to manage this item"));
+            
+            // Set the updated lore
+            ItemLoreUtils.setLore(displayItem, lore);
+            
+            // Add the item to the inventory
             inventory.setItem(i, displayItem);
         }
         
@@ -225,7 +247,8 @@ public class ShopManagementMenuHandler {
         // Open inventory
         player.openInventory(inventory);
         
-        // TODO: Store menu data for items menu
+        // Store menu data for items menu
+        guiManager.menuData.put(player.getUniqueId(), new MenuData(MenuType.SHOP_ITEMS, shop.getId()));
     }
     
     /**

@@ -72,5 +72,10 @@ public enum MenuType {
     /**
      * The shop statistics menu
      */
-    SHOP_STATISTICS
+    SHOP_STATISTICS,
+    
+    /**
+     * The shop items menu
+     */
+    SHOP_ITEMS
 } 

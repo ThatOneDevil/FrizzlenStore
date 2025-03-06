@@ -267,6 +267,9 @@ public class GuiManager {
             case ITEM_MANAGEMENT:
                 return ItemManagementMenuHandler.handleClick(this, plugin, player, slot, data);
                 
+            case SHOP_ITEMS:
+                return ShopItemsMenuHandler.handleClick(this, plugin, player, slot, data);
+                
             default:
                 return false;
         }
