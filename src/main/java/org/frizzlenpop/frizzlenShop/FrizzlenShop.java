@@ -27,7 +27,6 @@ public final class FrizzlenShop extends JavaPlugin {
     private GuiManager guiManager;
     private LogManager logManager;
     private ChatListener chatListener;
-    private boolean frizzlenEcoHooked = false;
 
     @Override
     public void onEnable() {
@@ -41,16 +40,17 @@ public final class FrizzlenShop extends JavaPlugin {
         configManager = new ConfigManager(this);
         configManager.loadConfig();
         
-        // Hook into FrizzlenEco
-        if (!hookFrizzlenEco()) {
-            getLogger().severe("Failed to hook into FrizzlenEco! Disabling plugin...");
+        // Initialize managers
+        logManager = new LogManager(this);
+        economyManager = new EconomyManager(this);
+        
+        // Check if the economy is available
+        if (!economyManager.isVaultHooked()) {
+            getLogger().severe("No Vault economy plugin found! Disabling plugin...");
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
         
-        // Initialize managers
-        logManager = new LogManager(this);
-        economyManager = new EconomyManager(this);
         dataManager = new DataManager(this);
         shopManager = new ShopManager(this);
         guiManager = new GuiManager(this);
@@ -81,19 +81,6 @@ public final class FrizzlenShop extends JavaPlugin {
         getLogger().info("FrizzlenShop has been disabled!");
     }
     
-    private boolean hookFrizzlenEco() {
-        try {
-            if (getServer().getPluginManager().getPlugin("FrizzlenEco") != null) {
-                getLogger().info("Successfully hooked into FrizzlenEco!");
-                frizzlenEcoHooked = true;
-                return true;
-            }
-        } catch (Exception e) {
-            getLogger().log(Level.SEVERE, "Error hooking into FrizzlenEco", e);
-        }
-        return false;
-    }
-    
     public static FrizzlenShop getInstance() {
         return instance;
     }
@@ -120,10 +107,6 @@ public final class FrizzlenShop extends JavaPlugin {
     
     public LogManager getLogManager() {
         return logManager;
-    }
-    
-    public boolean isFrizzlenEcoHooked() {
-        return frizzlenEcoHooked;
     }
 
     /**

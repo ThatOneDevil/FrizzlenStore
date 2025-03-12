@@ -4,7 +4,7 @@
 general:
   # Default shop tax rate (percentage)
   default-tax-rate: 5.0
-  # Default currency (must be defined in FrizzlenEco)
+  # Default currency (must be defined in the economy plugin)
   default-currency: "dollars"
   # Whether to enable shop maintenance mode (admins only)
   maintenance-mode: false
@@ -143,5 +143,5 @@ permissions:
 integrations:
   # Whether to hook into PAPI for placeholders
   placeholderapi: true
-  # Whether to hook into Vault as a fallback economy
-  vault: false 
+  # Whether to use Vault for economy
+  vault: true 

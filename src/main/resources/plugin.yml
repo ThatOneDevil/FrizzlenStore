@@ -5,7 +5,7 @@ api-version: '1.21'
 load: STARTUP
 authors: [ frizzlenpop ]
 description: A Plugin for Selling items in the game
-depend: [FrizzlenEco]
+softdepend: [Vault]
 commands:
   shop:
     description: Main command for the FrizzlenShop plugin
