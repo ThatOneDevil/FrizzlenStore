@@ -308,7 +308,7 @@ public class PlayerShop implements Shop {
         }
         
         // Check if there's enough stock
-        if (shopItem.getStock() < amount) {
+        if (!shopItem.hasStock(amount)) {
             MessageUtils.sendErrorMessage(player, "This shop doesn't have enough stock of this item.");
             return false;
         }
@@ -335,20 +335,22 @@ public class PlayerShop implements Shop {
             return false;
         }
         
-        // Remove stock from the shop
-        int newStock = shopItem.removeStock(amount);
-        if (newStock < 0) {
-            // This shouldn't happen since we already checked stock, but just in case
-            MessageUtils.sendErrorMessage(player, "This shop doesn't have enough stock of this item.");
+        // Process the transaction - withdraw money first
+        if (!plugin.getEconomyManager().withdraw(player.getUniqueId(), totalPrice, currency)) {
+            // If withdrawal fails, remove the items from the player's inventory
+            player.getInventory().removeItem(purchasedItem);
+            MessageUtils.sendErrorMessage(player, "Transaction failed. Please try again later.");
             return false;
         }
         
-        // Process the transaction
-        if (!plugin.getEconomyManager().withdraw(player.getUniqueId(), totalPrice, currency)) {
-            // Rollback the transaction by removing the item and restoring stock
+        // Remove stock from the shop
+        int newStock = shopItem.removeStock(amount);
+        if (newStock < 0 && shopItem.getStock() != -1) {
+            // This shouldn't happen since we already checked stock, but just in case
+            // Rollback the transaction
+            plugin.getEconomyManager().deposit(player.getUniqueId(), totalPrice, currency);
             player.getInventory().removeItem(purchasedItem);
-            shopItem.addStock(amount);
-            MessageUtils.sendErrorMessage(player, "Transaction failed. Please try again later.");
+            MessageUtils.sendErrorMessage(player, "This shop doesn't have enough stock of this item.");
             return false;
         }
         
@@ -434,7 +436,7 @@ public class PlayerShop implements Shop {
         ItemStack soldItem = shopItem.getItem().clone();
         soldItem.setAmount(amount);
         
-        // Process the transaction
+        // Process the transaction - first withdraw money from shop owner
         if (!plugin.getEconomyManager().withdraw(owner, price, currency)) {
             MessageUtils.sendErrorMessage(player, "Transaction failed. Please try again later.");
             return false;
@@ -449,7 +451,27 @@ public class PlayerShop implements Shop {
         }
         
         // Remove the items from the player's inventory
-        player.getInventory().removeItem(soldItem);
+        // We need to handle the case where the items might be spread across different slots
+        int remainingToRemove = amount;
+        ItemStack[] contents = player.getInventory().getContents();
+        
+        for (int i = 0; i < contents.length && remainingToRemove > 0; i++) {
+            ItemStack invItem = contents[i];
+            if (invItem != null && shopItem.matches(invItem)) {
+                int toRemove = Math.min(remainingToRemove, invItem.getAmount());
+                if (toRemove == invItem.getAmount()) {
+                    // Remove the entire stack
+                    player.getInventory().setItem(i, null);
+                } else {
+                    // Remove part of the stack
+                    invItem.setAmount(invItem.getAmount() - toRemove);
+                }
+                remainingToRemove -= toRemove;
+            }
+        }
+        
+        // Update the player's inventory
+        player.updateInventory();
         
         // Add stock to the shop
         shopItem.addStock(amount);

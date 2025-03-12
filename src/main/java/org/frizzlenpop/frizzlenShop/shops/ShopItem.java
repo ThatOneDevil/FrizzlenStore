@@ -1,6 +1,9 @@
 package org.frizzlenpop.frizzlenShop.shops;
 
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.Damageable;
+import org.bukkit.Material;
 
 import java.util.UUID;
 
@@ -149,7 +152,7 @@ public class ShopItem {
      */
     public void setPrice(double price) {
         this.buyPrice = price;
-        this.sellPrice = price * 0.8; // Update sell price to be 80% of buy price
+        this.sellPrice = price * 0.8; // Default sell price is 80% of buy price
         this.lastPriceChange = System.currentTimeMillis();
     }
 
@@ -160,6 +163,16 @@ public class ShopItem {
      */
     public double getSellPrice() {
         return sellPrice;
+    }
+
+    /**
+     * Set the sell price
+     *
+     * @param sellPrice The new sell price
+     */
+    public void setSellPrice(double sellPrice) {
+        this.sellPrice = sellPrice;
+        this.lastPriceChange = System.currentTimeMillis();
     }
 
     /**
@@ -183,7 +196,7 @@ public class ShopItem {
     /**
      * Get the stock
      *
-     * @return The stock
+     * @return The stock, or -1 for unlimited
      */
     public int getStock() {
         return stock;
@@ -202,9 +215,13 @@ public class ShopItem {
      * Add stock
      *
      * @param amount The amount to add
-     * @return The new stock amount
+     * @return The new stock
      */
     public int addStock(int amount) {
+        if (stock == -1) {
+            return -1; // Unlimited stock
+        }
+        
         stock += amount;
         return stock;
     }
@@ -213,18 +230,33 @@ public class ShopItem {
      * Remove stock
      *
      * @param amount The amount to remove
-     * @return The new stock amount, or -1 if there's not enough stock
+     * @return The new stock, or -1 if the shop has unlimited stock
      */
     public int removeStock(int amount) {
-        if (stock < amount) {
-            return -1;
+        if (stock == -1) {
+            return -1; // Unlimited stock
         }
+        
+        if (stock < amount) {
+            return -1; // Not enough stock
+        }
+        
         stock -= amount;
         return stock;
     }
 
     /**
-     * Get the number of times this item has been sold to players
+     * Check if the shop has enough stock
+     *
+     * @param amount The amount to check
+     * @return True if the shop has enough stock, false otherwise
+     */
+    public boolean hasStock(int amount) {
+        return stock == -1 || stock >= amount;
+    }
+
+    /**
+     * Get the sold count
      *
      * @return The sold count
      */
@@ -242,7 +274,7 @@ public class ShopItem {
     }
 
     /**
-     * Get the number of times this item has been bought from players
+     * Get the bought count
      *
      * @return The bought count
      */
@@ -279,35 +311,75 @@ public class ShopItem {
             return false;
         }
         
-        // Check material and metadata
+        // Check material
         if (item.getType() != other.getType()) {
             return false;
         }
         
-        // For simplicity, we'll just check basic attributes
-        // In a real implementation, you'd want to check more NBT data
+        // Check if both have item meta
         if (item.hasItemMeta() != other.hasItemMeta()) {
             return false;
         }
         
-        if (item.hasItemMeta()) {
-            if (item.getItemMeta().hasDisplayName() != other.getItemMeta().hasDisplayName()) {
+        // If neither has item meta, they match based on material
+        if (!item.hasItemMeta()) {
+            return true;
+        }
+        
+        ItemMeta thisMeta = item.getItemMeta();
+        ItemMeta otherMeta = other.getItemMeta();
+        
+        // Check display name
+        if (thisMeta.hasDisplayName() != otherMeta.hasDisplayName()) {
+            return false;
+        }
+        
+        if (thisMeta.hasDisplayName() && !thisMeta.getDisplayName().equals(otherMeta.getDisplayName())) {
+            return false;
+        }
+        
+        // Check lore
+        if (thisMeta.hasLore() != otherMeta.hasLore()) {
+            return false;
+        }
+        
+        if (thisMeta.hasLore() && !thisMeta.getLore().equals(otherMeta.getLore())) {
+            return false;
+        }
+        
+        // Check enchantments
+        if (thisMeta.hasEnchants() != otherMeta.hasEnchants()) {
+            return false;
+        }
+        
+        if (thisMeta.hasEnchants() && !thisMeta.getEnchants().equals(otherMeta.getEnchants())) {
+            return false;
+        }
+        
+        // Check durability/damage for tools and weapons
+        if (thisMeta instanceof Damageable && otherMeta instanceof Damageable) {
+            Damageable thisD = (Damageable) thisMeta;
+            Damageable otherD = (Damageable) otherMeta;
+            
+            if (thisD.hasDamage() != otherD.hasDamage()) {
                 return false;
             }
             
-            if (item.getItemMeta().hasDisplayName() && !item.getItemMeta().getDisplayName().equals(other.getItemMeta().getDisplayName())) {
-                return false;
-            }
-            
-            if (item.getItemMeta().hasEnchants() != other.getItemMeta().hasEnchants()) {
-                return false;
-            }
-            
-            if (item.getItemMeta().hasEnchants() && !item.getItemMeta().getEnchants().equals(other.getItemMeta().getEnchants())) {
+            if (thisD.hasDamage() && thisD.getDamage() != otherD.getDamage()) {
                 return false;
             }
         }
         
+        // Check custom model data
+        if (thisMeta.hasCustomModelData() != otherMeta.hasCustomModelData()) {
+            return false;
+        }
+        
+        if (thisMeta.hasCustomModelData() && thisMeta.getCustomModelData() != otherMeta.getCustomModelData()) {
+            return false;
+        }
+        
+        // If we've made it this far, the items match
         return true;
     }
 

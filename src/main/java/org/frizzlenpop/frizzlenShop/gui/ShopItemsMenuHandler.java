@@ -4,6 +4,7 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.frizzlenpop.frizzlenShop.FrizzlenShop;
+import org.frizzlenpop.frizzlenShop.listeners.ChatListener;
 import org.frizzlenpop.frizzlenShop.shops.Shop;
 import org.frizzlenpop.frizzlenShop.shops.ShopItem;
 import org.frizzlenpop.frizzlenShop.utils.MessageUtils;
@@ -83,10 +84,10 @@ public class ShopItemsMenuHandler {
      */
     private static void handleAddItem(GuiManager guiManager, FrizzlenShop plugin, Player player, Shop shop) {
         // Get the item in the player's hand
-        ItemStack item = player.getInventory().getItemInMainHand();
+        ItemStack handItem = player.getInventory().getItemInMainHand();
         
         // Check if the player is holding an item
-        if (item.isEmpty()) {
+        if (handItem == null || handItem.getType() == Material.AIR || handItem.getAmount() <= 0) {
             MessageUtils.sendErrorMessage(player, "You must be holding an item to add it to the shop.");
             return;
         }
@@ -98,30 +99,52 @@ public class ShopItemsMenuHandler {
             return;
         }
         
-        // Create a copy of the item (1 quantity)
-        ItemStack shopItemStack = item.clone();
-        shopItemStack.setAmount(1);
+        // Check if the item is already in the shop
+        for (ShopItem existingItem : shop.getItems()) {
+            if (existingItem.matches(handItem)) {
+                MessageUtils.sendErrorMessage(player, "This item is already in the shop.");
+                return;
+            }
+        }
         
-        // Set default prices based on config
-        double buyPrice = plugin.getConfigManager().getDefaultBuyPrice();
-        double sellPrice = plugin.getConfigManager().getDefaultSellPrice();
-        String currency = plugin.getEconomyManager().getDefaultCurrency();
-        int stock = shop.isAdminShop() ? -1 : 1; // -1 for unlimited stock in admin shops
-        
-        // Add the item to the shop
-        boolean added = shop.addItem(shopItemStack, buyPrice, sellPrice, currency, stock);
-        
-        if (added) {
-            // Get the item we just added (last item in the list)
-            List<ShopItem> items = shop.getItems();
-            ShopItem newItem = items.get(items.size() - 1);
+        // For player shops, ask how many items to add as stock
+        if (!shop.isAdminShop()) {
+            // Ask the player how many items to add as stock
+            player.closeInventory();
+            MessageUtils.sendMessage(player, "&eHow many items do you want to add as initial stock?");
+            MessageUtils.sendMessage(player, "&7You have " + handItem.getAmount() + " of this item.");
+            MessageUtils.sendMessage(player, "&7Type a number in chat, or 'all' to add all items.");
             
-            // Success! Open the item management menu for the new item
-            MessageUtils.sendSuccessMessage(player, "Item added to the shop!");
-            guiManager.openItemManagementMenu(player, shop.getId(), newItem.getId());
+            // Register a chat action for the stock amount
+            plugin.getChatListener().registerPendingAction(player, 
+                    new ChatListener.ChatAction(ChatListener.ChatActionType.ADD_SHOP_ITEM, shop.getId()));
         } else {
-            // Failed to add the item
-            MessageUtils.sendErrorMessage(player, "Failed to add the item to the shop.");
+            // For admin shops, just add the item with unlimited stock
+            // Create a copy of the item for the shop (1 quantity)
+            ItemStack shopItemStack = handItem.clone();
+            shopItemStack.setAmount(1);
+            
+            // Set default prices based on config
+            double buyPrice = plugin.getShopManager().getDefaultBuyPrice(shopItemStack);
+            double sellPrice = plugin.getShopManager().getDefaultSellPrice(shopItemStack);
+            String currency = plugin.getEconomyManager().getDefaultCurrency();
+            int initialStock = -1; // -1 for unlimited stock in admin shops
+            
+            // Add the item to the shop
+            boolean added = shop.addItem(shopItemStack, buyPrice, sellPrice, currency, initialStock);
+            
+            if (added) {
+                // Get the item we just added (last item in the list)
+                List<ShopItem> items = shop.getItems();
+                ShopItem newItem = items.get(items.size() - 1);
+                
+                // Success! Open the item management menu for the new item
+                MessageUtils.sendSuccessMessage(player, "Item added to the admin shop with unlimited stock!");
+                guiManager.openItemManagementMenu(player, shop.getId(), newItem.getId());
+            } else {
+                // Failed to add the item
+                MessageUtils.sendErrorMessage(player, "Failed to add the item to the shop.");
+            }
         }
     }
 } 

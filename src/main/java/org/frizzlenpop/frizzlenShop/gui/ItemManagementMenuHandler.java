@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 /**
  * Handles the item management menu GUI
@@ -74,7 +75,8 @@ public class ItemManagementMenuHandler {
                     "&7Current stock: &f" + (shopItem.getStock() == -1 ? "Unlimited" : shopItem.getStock()),
                     "",
                     "&7Left-click to add stock",
-                    "&7Right-click to remove stock"
+                    "&7Right-click to remove stock",
+                    "&7Shift-click to set stock"
                 ));
         inventory.setItem(22, changeStockItem);
         
@@ -149,25 +151,91 @@ public class ItemManagementMenuHandler {
                 return true;
                 
             case 22: // Change Stock
-                // Left-click adds stock, right-click removes stock
-                // For simplicity, just update stock here
-
-                int newStock = 0;
-                if (clickType == ClickType.LEFT) {
-                    newStock = shopItem.getStock() + 10;
-                    shopItem.setStock(newStock);
+                // Admin shops have unlimited stock
+                if (shop.isAdminShop()) {
+                    MessageUtils.sendMessage(player, "&eAdmin shops have unlimited stock.");
+                    return true;
+                }
+                
+                // Handle different click types
+                if (clickType.isShiftClick()) {
+                    // Shift-click to set stock directly
+                    player.closeInventory();
+                    MessageUtils.sendMessage(player, "&eEnter the new stock amount for this item:");
+                    
+                    // Use a custom action handler
+                    plugin.getChatListener().registerPendingAction(player, new Consumer<String>() {
+                        @Override
+                        public void accept(String input) {
+                            try {
+                                int newStock = Integer.parseInt(input);
+                                if (newStock < 0) {
+                                    MessageUtils.sendErrorMessage(player, "Stock cannot be negative.");
+                                    return;
+                                }
+                                
+                                // Set the new stock
+                                shopItem.setStock(newStock);
+                                MessageUtils.sendSuccessMessage(player, "Stock updated to " + newStock + ".");
+                                
+                                // Refresh the menu
+                                guiManager.openItemManagementMenu(player, shopId, itemId);
+                            } catch (NumberFormatException e) {
+                                MessageUtils.sendErrorMessage(player, "Invalid number format. Please enter a valid number.");
+                            }
+                        }
+                    });
+                } else if (clickType == ClickType.LEFT) {
+                    // Left-click to add stock from inventory
+                    ItemStack handItem = player.getInventory().getItemInMainHand();
+                    
+                    // Check if player is holding the item
+                    if (handItem == null || handItem.getType() == Material.AIR || !shopItem.matches(handItem)) {
+                        MessageUtils.sendErrorMessage(player, "You must be holding the same item to add stock.");
+                        return true;
+                    }
+                    
+                    // Add the stock
+                    int amountToAdd = handItem.getAmount();
+                    shopItem.addStock(amountToAdd);
+                    
+                    // Remove the items from the player's inventory
+                    player.getInventory().setItemInMainHand(null);
+                    
+                    // Refresh the menu
+                    MessageUtils.sendSuccessMessage(player, "Added " + amountToAdd + " to stock.");
+                    guiManager.openItemManagementMenu(player, shopId, itemId);
                 } else if (clickType == ClickType.RIGHT) {
-                    newStock = shopItem.getStock() - 10;
+                    // Right-click to remove stock
+                    int currentStock = shopItem.getStock();
+                    if (currentStock <= 0) {
+                        MessageUtils.sendErrorMessage(player, "This item has no stock to remove.");
+                        return true;
+                    }
+                    
+                    // Calculate amount to remove (10 or all if less than 10)
+                    int amountToRemove = Math.min(10, currentStock);
+                    
+                    // Create the item to give to the player
+                    ItemStack itemToGive = shopItem.getItem().clone();
+                    itemToGive.setAmount(amountToRemove);
+                    
+                    // Check if player has inventory space
+                    if (player.getInventory().firstEmpty() == -1) {
+                        MessageUtils.sendErrorMessage(player, "Your inventory is full.");
+                        return true;
+                    }
+                    
+                    // Remove from shop stock
+                    shopItem.setStock(currentStock - amountToRemove);
+                    
+                    // Give to player
+                    player.getInventory().addItem(itemToGive);
+                    
+                    // Refresh the menu
+                    MessageUtils.sendSuccessMessage(player, "Removed " + amountToRemove + " from stock.");
+                    guiManager.openItemManagementMenu(player, shopId, itemId);
                 }
-
-                if (newStock < 10) {
-                    newStock = 1;
-                }
-
-                shopItem.setStock(newStock);
-
-                // Refresh menu
-                openItemManagementMenu(guiManager, plugin, player, shop, shopItem);
                 return true;
                 
             case 25: // Remove Item

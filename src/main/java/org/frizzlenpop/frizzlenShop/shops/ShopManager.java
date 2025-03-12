@@ -505,67 +505,39 @@ public class ShopManager {
     }
 
     /**
-     * Get default buy price for an item
+     * Get the default buy price for an item
      *
-     * @param item The item to get the default buy price for
+     * @param item The item to get the price for
      * @return The default buy price
      */
     public double getDefaultBuyPrice(ItemStack item) {
-        // Get the default buy price from the config
-        double defaultPrice = plugin.getConfigManager().getDefaultBuyPrice();
+        // In a real implementation, you might have a more sophisticated pricing system
+        // based on item rarity, enchantments, etc.
+        // For now, we'll use a simple system based on material
+        Material material = item.getType();
         
-        // Apply any item-specific price adjustments from item_values.yml
-        double itemValue = getItemValue(item);
-        
-        // Apply global multiplier
-        double globalMultiplier = plugin.getConfigManager().getGlobalPriceMultiplier();
-        
-        return defaultPrice * itemValue * globalMultiplier;
+        // Base price categories
+        if (material.name().contains("DIAMOND") || material.name().contains("NETHERITE")) {
+            return 100.0;
+        } else if (material.name().contains("GOLD") || material.name().contains("EMERALD")) {
+            return 50.0;
+        } else if (material.name().contains("IRON") || material.name().contains("LAPIS")) {
+            return 25.0;
+        } else if (material.name().contains("STONE") || material.name().contains("WOOD")) {
+            return 5.0;
+        } else {
+            return 10.0;
+        }
     }
     
     /**
-     * Get default sell price for an item
+     * Get the default sell price for an item
      *
-     * @param item The item to get the default sell price for
+     * @param item The item to get the price for
      * @return The default sell price
      */
     public double getDefaultSellPrice(ItemStack item) {
-        // Sell prices are typically a percentage of buy prices
-        double buyPrice = getDefaultBuyPrice(item);
-        double sellRatio = plugin.getConfigManager().getSellPriceRatio();
-        
-        return buyPrice * sellRatio;
-    }
-    
-    /**
-     * Get the base value of an item (for price calculations)
-     *
-     * @param item The item to get the value for
-     * @return The item's base value (1.0 is standard)
-     */
-    private double getItemValue(ItemStack item) {
-        // In a real implementation, this would load from a configuration file
-        // For now, we'll use some sensible defaults based on item type
-        Material type = item.getType();
-        
-        if (type.name().contains("DIAMOND")) {
-            return 10.0;
-        } else if (type.name().contains("GOLD")) {
-            return 5.0;
-        } else if (type.name().contains("IRON")) {
-            return 2.0;
-        } else if (type.name().contains("STONE")) {
-            return 0.5;
-        } else if (type.name().contains("WOOD") || type.name().contains("LOG")) {
-            return 0.8;
-        } else if (type.name().contains("ENCHANTED") || type.name().endsWith("_ENCHANTED")) {
-            return 8.0;
-        } else if (item.getEnchantments().size() > 0) {
-            // Items with enchantments are worth more
-            return 3.0 + (item.getEnchantments().size() * 1.5);
-        }
-        
-        // Default value
-        return 1.0;
+        // Sell price is typically lower than buy price
+        return getDefaultBuyPrice(item) * 0.8;
     }
 } 

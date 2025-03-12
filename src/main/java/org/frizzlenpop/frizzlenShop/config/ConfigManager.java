@@ -71,7 +71,7 @@ public class ConfigManager {
     }
 
     public int getMaxItemsPerPlayerShop() {
-        return config.getInt("player-shops.max-items-per-shop", 45);
+        return config.getInt("player-shops.max-items", 27);
     }
 
     public int getShopRentalPeriod() {
