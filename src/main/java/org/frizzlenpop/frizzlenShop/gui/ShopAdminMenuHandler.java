@@ -1048,4 +1048,40 @@ public class ShopAdminMenuHandler {
         // All other clicks are just informational items
         return true;
     }
+
+    /**
+     * Handle clicks in the admin shop management menu
+     *
+     * @param guiManager The GUI manager
+     * @param plugin The plugin instance
+     * @param player The player
+     * @param slot The clicked slot
+     * @param data The menu data
+     * @return True if the click was handled
+     */
+    public static boolean handleAdminShopManagementClick(GuiManager guiManager, FrizzlenShop plugin, Player player, int slot, MenuData data) {
+        // Back button is at slot 49
+        if (slot == 49) {
+            guiManager.openShopAdminMenu(player);
+            return true;
+        }
+        
+        // Slots 0-44 are shop buttons
+        if (slot >= 0 && slot < 45) {
+            // Get all shops
+            java.util.Collection<Shop> shopCollection = plugin.getShopManager().getAllShops();
+            List<Shop> shops = new java.util.ArrayList<>(shopCollection);
+            
+            // Check if the slot corresponds to a valid shop
+            if (slot < shops.size()) {
+                Shop shop = shops.get(slot);
+                
+                // Open shop management menu for the selected shop
+                guiManager.openShopManagementMenu(player, shop.getId());
+                return true;
+            }
+        }
+        
+        return false;
+    }
 } 

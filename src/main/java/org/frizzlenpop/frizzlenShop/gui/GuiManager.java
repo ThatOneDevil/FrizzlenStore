@@ -292,6 +292,9 @@ public class GuiManager {
             case SHOP_ADMIN_MENU:
                 return ShopAdminMenuHandler.handleClick(this, plugin, player, slot);
                 
+            case ADMIN_SHOP_MANAGEMENT:
+                return ShopAdminMenuHandler.handleAdminShopManagementClick(this, plugin, player, slot, data);
+                
             case SHOP_MANAGEMENT:
                 return ShopManagementMenuHandler.handleClick(this, plugin, player, slot, data);
                 
