@@ -1,190 +1,129 @@
 # FrizzlenShop
 
-A comprehensive shop system for Minecraft servers, providing an intuitive GUI-based shopping experience that integrates seamlessly with FrizzlenEco.
+FrizzlenShop is a comprehensive shop plugin for Minecraft servers that enables both admin and player shops with dynamic pricing features based on market analysis.
 
 ## Features
 
-- **Shop Types**
-  - Admin Shops with infinite stock
-  - Player Shops with limited stock and rental system
-  
-- **Core Functionality**
-  - Beautiful, intuitive GUI interface
-  - Category-based item browsing
-  - Buy and sell items with ease
-  - Multi-currency support via FrizzlenEco
-  - Shop statistics tracking
-  - Transaction logging
-  
-- **Advanced Features**
-  - Shop rental system with auto-renewal
-  - Market analysis tools
-  - Customizable tax rates
-  - Transaction history tracking
-  - Extensive permission system
+FrizzlenShop offers a wide range of features to enhance your server's economy:
+
+- **[Admin Shop System](docs/admin-shop.md)**: Server-run shops with tiered pricing for balanced game progression
+- **[Player Shop System](docs/player-shop.md)**: Allow players to create and manage their own shops
+- **[Dynamic Pricing](docs/dynamic-pricing.md)**: Prices that change based on supply and demand
+- **[Market Analysis](docs/market-analysis.md)**: Track market trends and suggest profitable crafting opportunities
+- **[Economy Integration](docs/economy.md)**: Seamless integration with Vault and popular economy plugins
+- **[Database Management](docs/database.md)**: Robust storage and retrieval of shop and transaction data
+- **[Crafting System](docs/crafting.md)**: Analysis of crafting relationships for dynamic pricing
 
 ## Installation
 
-1. **Prerequisites**
-   - Minecraft server running Paper 1.21+
-   - FrizzlenEco plugin installed
-   
-2. **Install Method 1: Maven (Recommended)**
-   - Clone this repository
-   - Run `mvn clean package`
-   - Copy the generated JAR from the `target/` folder to your server's `plugins/` folder
+1. Download the latest version of FrizzlenShop from [SpigotMC](https://www.spigotmc.org/) or [Bukkit](https://dev.bukkit.org/)
+2. Place the `.jar` file in your server's `plugins` folder
+3. Restart your server
+4. The plugin will generate default configuration files
 
-3. **Install Method 2: Direct Download**
-   - Download the latest JAR file from the releases page
-   - Place it in your server's `plugins/` folder
+## Quick Start
 
-4. **Post-Installation**
-   - Start your server
-   - The plugin will generate configuration files
+After installation, you can create an admin shop with:
+
+```
+/fs admin shop create <name>
+```
+
+Players can create their own shops with:
+
+```
+/fs shop create <name>
+```
+
+For more detailed commands, see the [Commands](#commands) section below.
 
 ## Configuration
 
-### Basic Configuration (config.yml)
+The main configuration file is located at `plugins/FrizzlenShop/config.yml`. Here are some key configuration options:
 
 ```yaml
+# Database configuration
+database:
+  type: sqlite  # sqlite or mysql
+  path: frizzlenshop.db  # For sqlite only
+  host: localhost  # For mysql only
+  port: 3306  # For mysql only
+  name: frizzlenshop  # For mysql only
+  username: root  # For mysql only
+  password: ''  # For mysql only
+  table_prefix: fs_
+
 # General settings
-general:
-  default-tax-rate: 5.0
-  default-currency: "dollars"
-  maintenance-mode: false
-  shop-creation-cost: 1000.0
-  max-shops-per-player: 3
+settings:
+  starting_coins: 100  # Coins given to new players
+  dynamic_pricing: true  # Enable/disable dynamic pricing
+  admin_shop_refresh: false  # Force refresh admin shop on startup
 
-# Admin shop settings
-admin-shops:
-  enabled: true
-  infinite-stock: true
-  tax-rate: 3.0
-  prefix: "&c[Admin] "
-
-# Player shop settings
-player-shops:
-  enabled: true
-  tax-rate: 7.0
-  max-items: 27
-  rental-period: 7
-  rental-cost: 500.0
-  auto-renew: true
+# Shop settings
+shop:
+  max_player_shops: 3  # Maximum number of shops a player can own
+  max_items_per_shop: 54  # Maximum number of items per shop
+  tax_rate: 0.05  # 5% tax on player shop transactions
 ```
 
-### Categories
-
-Edit the categories section in the config.yml to customize shop categories:
-
-```yaml
-categories:
-  tools:
-    icon: DIAMOND_PICKAXE
-    name: "&e&lTools"
-    description: "Mining and crafting tools"
-  food:
-    icon: BREAD
-    name: "&e&lFood"
-    description: "Edible items"
-  # Add more categories as needed
-```
+For more detailed configuration options, see each feature's dedicated documentation.
 
 ## Commands
 
-### Player Commands
-
-- `/shop` - Open the main shop menu
-- `/shop browse [category]` - Browse shops by category
-- `/shop search <query>` - Search for specific items
-- `/shop create` - Start shop creation wizard
-- `/shop manage` - Manage your shops
-- `/shop history` - View your transaction history
-- `/shop sell <item> [amount] [price]` - Quick-sell items
-- `/shop buy <item> [amount]` - Quick-buy items
-- `/shop help` - Show help message
-
 ### Admin Commands
 
-- `/shopadmin create <name>` - Create an admin shop
-- `/shopadmin remove <shop-id>` - Remove a shop
-- `/shopadmin edit <shop-id>` - Edit shop settings
-- `/shopadmin price <shop-id> <buy> <sell> [currency]` - Set prices
-- `/shopadmin reload` - Reload configuration
-- `/shopadmin logs <player> [timeframe]` - View transaction logs
-- `/shopadmin tax <rate>` - Set global tax rate
-- `/shopadmin maintenance <on|off>` - Toggle maintenance mode
+- `/fs admin shop create <name>` - Creates a new admin shop
+- `/fs admin shop delete <name>` - Deletes an admin shop
+- `/fs admin shop list` - Lists all admin shops
+- `/fs admin price tier <item> <tier>` - Sets an item's pricing tier
+- `/fs admin price set <item> <price>` - Sets a specific price for an item
+- `/fs admin stats` - Shows statistics about shops and transactions
+
+### Player Commands
+
+- `/fs shop create <name>` - Creates a new player shop
+- `/fs shop delete <name>` - Deletes a player shop
+- `/fs shop open <name>` - Opens a shop
+- `/fs shop list` - Lists all available shops
+- `/fs balance` - Shows your current balance
 
 ## Permissions
 
-### Basic Permissions
+- `frizzlenshop.admin` - Access to all admin commands
+- `frizzlenshop.shop.create` - Ability to create player shops
+- `frizzlenshop.shop.use` - Ability to use shops
+- `frizzlenshop.shop.delete` - Ability to delete own shops
 
-- `frizzlenshop.use` - Allow use of the shop system (default: true)
-- `frizzlenshop.create` - Allow creation of personal shops (default: true)
-- `frizzlenshop.sell` - Allow selling items to shops (default: true)
-- `frizzlenshop.buy` - Allow buying items from shops (default: true)
+## API for Developers
 
-### Advanced Permissions
+FrizzlenShop provides an API for developers to integrate their plugins:
 
-- `frizzlenshop.create.limit.*` - Set shop limit tiers:
-  - `frizzlenshop.create.limit.1`
-  - `frizzlenshop.create.limit.3`
-  - `frizzlenshop.create.limit.5`
-  - `frizzlenshop.create.limit.10`
+```java
+// Get FrizzlenShop instance
+FrizzlenShop frizzlenShop = (FrizzlenShop) Bukkit.getPluginManager().getPlugin("FrizzlenShop");
 
-- `frizzlenshop.create.size.*` - Set shop size tiers:
-  - `frizzlenshop.create.size.9`
-  - `frizzlenshop.create.size.18`
-  - `frizzlenshop.create.size.27`
-  - `frizzlenshop.create.size.54`
+// Get shop manager
+ShopManager shopManager = frizzlenShop.getShopManager();
 
-### Admin Permissions
-
-- `frizzlenshop.admin` - Full access to all shop features (includes all permissions below)
-- `frizzlenshop.admin.create` - Create admin shops
-- `frizzlenshop.admin.edit` - Edit any shop
-- `frizzlenshop.admin.remove` - Remove any shop
-- `frizzlenshop.admin.prices` - Override prices
-- `frizzlenshop.admin.logs` - View all transaction logs
-- `frizzlenshop.admin.tax` - Manage tax settings
-- `frizzlenshop.admin.maintenance` - Control maintenance mode
-
-## FrizzlenEco Integration
-
-FrizzlenShop integrates with FrizzlenEco for all economy operations:
-
-- Multi-currency support
-- Transaction handling
-- Balance checking
-- Shop account management
-
-### Dependency Setup
-
-If you're building from source, ensure FrizzlenEco is properly set up:
-
-1. Use the included `install_frizzleneco.bat` to install FrizzlenEco to your local Maven repository, or
-2. Update the `pom.xml` with the correct path to your FrizzlenEco JAR file
+// Get economy manager
+EconomyManager economyManager = frizzlenShop.getEconomyManager();
+```
 
 ## Troubleshooting
 
-### Common Issues
+If you encounter any issues:
 
-**Issue**: Missing artifact org.frizzlenpop:FrizzlenEco:jar:1.0-SNAPSHOT  
-**Solution**: Run the included `install_frizzleneco.bat` file or adjust the system path in pom.xml
+1. Check the server console for error messages
+2. Verify your configuration settings
+3. Ensure you have Vault and a compatible economy plugin installed
+4. For database issues, check connection settings in the config file
 
-**Issue**: Commands not working  
-**Solution**: Check if the plugin is properly enabled in the console. Verify permissions.
+## Support and Contributions
 
-**Issue**: GUI not opening  
-**Solution**: Check console for errors. Ensure you have the correct permissions.
+For support, please visit our [Discord server](https://discord.gg/) or open an issue on our [GitHub repository](https://github.com/).
 
-## Support
-
-If you encounter any issues or have questions:
-
-1. Check the troubleshooting section above
-2. Open an issue on our GitHub repository
-3. Contact the development team at [support email]
+Contributions are welcome! Please feel free to submit a pull request.
 
 ## License
 
-[Your license information here] 
+FrizzlenShop is licensed under the [MIT License](LICENSE). 
