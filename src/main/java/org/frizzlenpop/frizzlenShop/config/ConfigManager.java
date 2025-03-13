@@ -288,6 +288,7 @@ public class ConfigManager {
 
     /**
      * Set whether dynamic pricing is enabled
+     * Dynamic pricing adjusts prices based on supply and demand
      *
      * @param enabled Whether dynamic pricing should be enabled
      */
@@ -297,6 +298,7 @@ public class ConfigManager {
 
     /**
      * Set whether price fluctuation is enabled
+     * Price fluctuation causes prices to change regularly based on time
      *
      * @param enabled Whether price fluctuation should be enabled
      */
@@ -449,5 +451,176 @@ public class ConfigManager {
      */
     public void setPlayerShopTaxRate(double rate) {
         config.set("player-shops.tax-rate", rate);
+    }
+
+    /**
+     * Get whether craft-based pricing is enabled
+     * Craft-based pricing adjusts prices based on crafting components
+     *
+     * @return True if craft-based pricing is enabled, false otherwise
+     */
+    public boolean isCraftBasedPricingEnabled() {
+        return config.getBoolean("economy.craft-based-pricing.enabled", true);
+    }
+
+    /**
+     * Set whether craft-based pricing is enabled
+     *
+     * @param enabled Whether craft-based pricing should be enabled
+     */
+    public void setCraftBasedPricingEnabled(boolean enabled) {
+        config.set("economy.craft-based-pricing.enabled", enabled);
+    }
+
+    /**
+     * Get the component demand multiplier
+     * Controls how much demand for crafted items affects component prices
+     *
+     * @return The component demand multiplier
+     */
+    public double getComponentDemandMultiplier() {
+        return config.getDouble("economy.craft-based-pricing.component-demand-multiplier", 0.4);
+    }
+
+    /**
+     * Set the component demand multiplier
+     *
+     * @param multiplier The new component demand multiplier
+     */
+    public void setComponentDemandMultiplier(double multiplier) {
+        config.set("economy.craft-based-pricing.component-demand-multiplier", multiplier);
+    }
+
+    /**
+     * Get the base price for a specific material
+     *
+     * @param material The material
+     * @return The base price for the material, or 0 if not configured
+     */
+    public double getMaterialBasePrice(org.bukkit.Material material) {
+        String path = "economy.material-prices." + material.toString().toLowerCase();
+        return config.getDouble(path, 0.0);
+    }
+
+    /**
+     * Set the base price for a specific material
+     *
+     * @param material The material
+     * @param price The base price
+     */
+    public void setMaterialBasePrice(org.bukkit.Material material, double price) {
+        String path = "economy.material-prices." + material.toString().toLowerCase();
+        config.set(path, price);
+    }
+
+    /**
+     * Get whether price suggestions are enabled for player shops
+     *
+     * @return True if price suggestions are enabled
+     */
+    public boolean arePriceSuggestionsEnabled() {
+        return config.getBoolean("player-shops.price-suggestions-enabled", true);
+    }
+
+    /**
+     * Set whether price suggestions are enabled for player shops
+     *
+     * @param enabled Whether price suggestions should be enabled
+     */
+    public void setPriceSuggestionsEnabled(boolean enabled) {
+        config.set("player-shops.price-suggestions-enabled", enabled);
+    }
+
+    /**
+     * Check if profit margin display is enabled
+     * This shows players the potential profit from crafting items
+     *
+     * @return True if profit margin display is enabled
+     */
+    public boolean isProfitMarginDisplayEnabled() {
+        return config.getBoolean("economy.craft-based-pricing.show-profit-margins", true);
+    }
+
+    /**
+     * Set whether profit margin display is enabled
+     *
+     * @param enabled Whether profit margin display should be enabled
+     */
+    public void setProfitMarginDisplayEnabled(boolean enabled) {
+        config.set("economy.craft-based-pricing.show-profit-margins", enabled);
+    }
+
+    /**
+     * Check if this is the first run of the plugin
+     * Used to determine if shops should be initialized
+     *
+     * @return True if this is the first run
+     */
+    public boolean isFirstRun() {
+        return config.getBoolean("general.first-run", true);
+    }
+
+    /**
+     * Set whether this is the first run of the plugin
+     *
+     * @param isFirstRun Whether this is the first run
+     */
+    public void setFirstRun(boolean isFirstRun) {
+        config.set("general.first-run", isFirstRun);
+    }
+
+    /**
+     * Check if admin shops should be forcibly refreshed
+     * This is useful for updating shops after config changes
+     *
+     * @return True if admin shops should be refreshed
+     */
+    public boolean isForceAdminShopRefresh() {
+        return config.getBoolean("admin-shops.force-refresh", false);
+    }
+
+    /**
+     * Set whether admin shops should be forcibly refreshed
+     *
+     * @param forceRefresh Whether admin shops should be refreshed
+     */
+    public void setForceAdminShopRefresh(boolean forceRefresh) {
+        config.set("admin-shops.force-refresh", forceRefresh);
+    }
+
+    /**
+     * Check if admin shops should use the tier-based pricing system
+     *
+     * @return True if admin shops should use tier-based pricing
+     */
+    public boolean useTierBasedPricing() {
+        return config.getBoolean("admin-shops.use-tier-based-pricing", true);
+    }
+
+    /**
+     * Set whether admin shops should use the tier-based pricing system
+     *
+     * @param useTierPricing Whether admin shops should use tier-based pricing
+     */
+    public void setUseTierBasedPricing(boolean useTierPricing) {
+        config.set("admin-shops.use-tier-based-pricing", useTierPricing);
+    }
+
+    /**
+     * Get the starting coin amount for new players
+     * 
+     * @return The starting coin amount
+     */
+    public double getStartingCoins() {
+        return config.getDouble("economy.starting-coins", 100.0);
+    }
+
+    /**
+     * Set the starting coin amount for new players
+     * 
+     * @param amount The starting coin amount
+     */
+    public void setStartingCoins(double amount) {
+        config.set("economy.starting-coins", amount);
     }
 } 

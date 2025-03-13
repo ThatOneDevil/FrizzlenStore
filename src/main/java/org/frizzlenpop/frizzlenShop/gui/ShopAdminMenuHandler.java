@@ -6,6 +6,7 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.frizzlenpop.frizzlenShop.FrizzlenShop;
 import org.frizzlenpop.frizzlenShop.config.ConfigManager;
 import org.frizzlenpop.frizzlenShop.listeners.ChatListener;
@@ -14,6 +15,8 @@ import org.frizzlenpop.frizzlenShop.shops.Shop;
 import org.frizzlenpop.frizzlenShop.shops.ShopManager;
 import org.frizzlenpop.frizzlenShop.utils.MessageUtils;
 import org.frizzlenpop.frizzlenShop.utils.GuiUtils;
+import org.frizzlenpop.frizzlenShop.economy.MarketAnalyzer;
+import org.frizzlenpop.frizzlenShop.economy.CraftingRelationManager;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -21,6 +24,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.Map;
 import java.util.ArrayList;
+import java.util.Comparator;
 
 /**
  * Handles the shop admin menu GUI
@@ -83,6 +87,24 @@ public class ShopAdminMenuHandler {
                     "&7Click to manage"
                 ));
         
+        // Market trends item
+        ItemStack marketTrendsItem = guiManager.createGuiItem(Material.CLOCK, "&d&lMarket Trends", 
+                Arrays.asList(
+                    "&7View current market trends",
+                    "&7based on dynamic pricing",
+                    "",
+                    "&7Click to view"
+                ));
+        
+        // Crafting opportunities item
+        ItemStack craftingOpportunitiesItem = guiManager.createGuiItem(Material.CRAFTING_TABLE, "&d&lCrafting Opportunities", 
+                Arrays.asList(
+                    "&7View profitable crafting opportunities",
+                    "&7based on current market prices",
+                    "",
+                    "&7Click to view"
+                ));
+        
         ItemStack backItem = guiManager.createGuiItem(Material.ARROW, "&7&lBack", 
                 Collections.singletonList("&7Return to main menu"));
         
@@ -95,8 +117,10 @@ public class ShopAdminMenuHandler {
         inventory.setItem(15, maintenanceItem);
         inventory.setItem(16, reloadConfigItem);
         
-        inventory.setItem(21, statsItem);
-        inventory.setItem(23, bulkItemManagementItem);  // Add the new button
+        inventory.setItem(20, statsItem);
+        inventory.setItem(22, bulkItemManagementItem);
+        inventory.setItem(24, marketTrendsItem);
+        inventory.setItem(26, craftingOpportunitiesItem);
         
         inventory.setItem(49, backItem);
         
@@ -165,14 +189,24 @@ public class ShopAdminMenuHandler {
                 MessageUtils.sendMessage(player, "&aConfiguration reloaded successfully!");
                 return true;
                 
-            case 21: // Shop Statistics
+            case 20: // Shop Statistics
                 // Show shop statistics
                 openStatisticsMenu(guiManager, plugin, player);
                 return true;
                 
-            case 23: // Bulk Item Management
+            case 22: // Bulk Item Management
                 // Open the bulk item management menu
                 openBulkItemManagementMenu(guiManager, plugin, player);
+                return true;
+                
+            case 24: // Market Trends
+                // Open the market trends menu
+                guiManager.openMarketTrendsMenu(player);
+                return true;
+                
+            case 26: // Crafting Opportunities
+                // Open the crafting opportunities menu
+                guiManager.openCraftingOpportunitiesMenu(player);
                 return true;
                 
             case 49: // Back
@@ -757,10 +791,20 @@ public class ShopAdminMenuHandler {
                 
             case 20: // Dynamic pricing toggle
                 boolean dynamicPricing = !config.isDynamicPricingEnabled();
-                config.setDynamicPricingEnabled(dynamicPricing);
-                config.saveConfig();
                 
-                MessageUtils.sendSuccessMessage(player, "Dynamic pricing " + (dynamicPricing ? "enabled" : "disabled"));
+                // Use the dynamic pricing manager if available, otherwise just update config
+                if (plugin.getDynamicPricingManager() != null) {
+                    plugin.getDynamicPricingManager().setDynamicPricingEnabled(dynamicPricing, player);
+                } else {
+                    config.setDynamicPricingEnabled(dynamicPricing);
+                    config.saveConfig();
+                    
+                    if (dynamicPricing) {
+                        MessageUtils.sendMessage(player, "&aDynamic pricing enabled. Server restart recommended to fully activate the system.");
+                    } else {
+                        MessageUtils.sendMessage(player, "&cDynamic pricing disabled.");
+                    }
+                }
                 
                 // Refresh the menu
                 openPriceManagementMenu(guiManager, plugin, player);
@@ -1083,5 +1127,384 @@ public class ShopAdminMenuHandler {
         }
         
         return false;
+    }
+
+    /**
+     * Opens the market trends menu for the player
+     *
+     * @param guiManager The GUI manager
+     * @param plugin The plugin instance
+     * @param player The player
+     */
+    public static void openMarketTrendsMenu(GuiManager guiManager, FrizzlenShop plugin, Player player) {
+        // Create inventory
+        String title = "Market Trends";
+        Inventory inventory = Bukkit.createInventory(null, 9 * 6, title);
+        
+        // Check if dynamic pricing is enabled
+        boolean dynamicPricingEnabled = plugin.getConfigManager().isDynamicPricingEnabled();
+        
+        if (!dynamicPricingEnabled || plugin.getDynamicPricingManager() == null) {
+            // Dynamic pricing is not enabled, show information message
+            ItemStack infoItem = guiManager.createGuiItem(
+                Material.BARRIER, 
+                "&c&lDynamic Pricing Disabled", 
+                Arrays.asList(
+                    "&7Dynamic pricing is currently disabled.",
+                    "&7Enable it in the Price Management menu",
+                    "&7to see market trends."
+                )
+            );
+            inventory.setItem(22, infoItem);
+        } else {
+            // Get trending items
+            Map<Material, Double> trendingItems = plugin.getDynamicPricingManager().getTrendingItems(27);
+            
+            if (trendingItems.isEmpty()) {
+                // No market data yet
+                ItemStack infoItem = guiManager.createGuiItem(
+                    Material.PAPER, 
+                    "&e&lNo Market Data Yet", 
+                    Arrays.asList(
+                        "&7There is no market data available yet.",
+                        "&7Market trends will appear as players buy",
+                        "&7and sell items in shops."
+                    )
+                );
+                inventory.setItem(22, infoItem);
+            } else {
+                // Display trending items
+                int slot = 10;
+                for (Map.Entry<Material, Double> entry : trendingItems.entrySet()) {
+                    Material material = entry.getKey();
+                    double trend = entry.getValue();
+                    
+                    List<String> lore = new ArrayList<>();
+                    
+                    // Trend description
+                    if (trend > 0.3) {
+                        lore.add("&c&lRapidly Rising Prices");
+                        lore.add("&7Demand is much higher than supply");
+                        lore.add("&7Prices are increasing significantly");
+                    } else if (trend > 0.1) {
+                        lore.add("&e&lSlightly Rising Prices");
+                        lore.add("&7Demand is higher than supply");
+                        lore.add("&7Prices are increasing gradually");
+                    } else if (trend < -0.3) {
+                        lore.add("&a&lRapidly Falling Prices");
+                        lore.add("&7Supply is much higher than demand");
+                        lore.add("&7Prices are decreasing significantly");
+                    } else if (trend < -0.1) {
+                        lore.add("&2&lSlightly Falling Prices");
+                        lore.add("&7Supply is higher than demand");
+                        lore.add("&7Prices are decreasing gradually");
+                    } else {
+                        lore.add("&f&lStable Prices");
+                        lore.add("&7Supply and demand are balanced");
+                        lore.add("&7Prices are relatively stable");
+                    }
+                    
+                    // Add trend value
+                    String trendFormat = String.format("%.2f", trend);
+                    lore.add("");
+                    lore.add("&7Trend value: &f" + trendFormat);
+                    lore.add("&7(Positive = rising, negative = falling)");
+                    
+                    // Add market advice
+                    lore.add("");
+                    if (trend > 0) {
+                        lore.add("&aGood time to sell!");
+                    } else {
+                        lore.add("&aGood time to buy!");
+                    }
+                    
+                    // Create item
+                    ItemStack trendItem = new ItemStack(material);
+                    ItemMeta meta = trendItem.getItemMeta();
+                    meta.setDisplayName(ChatColor.GREEN + formatMaterialName(material.toString()));
+                    meta.setLore(lore);
+                    trendItem.setItemMeta(meta);
+                    
+                    inventory.setItem(slot, trendItem);
+                    slot++;
+                    
+                    if (slot % 9 == 8) {
+                        slot += 2; // Skip to next row
+                    }
+                    
+                    if (slot >= 36) {
+                        break; // Only show 27 items max
+                    }
+                }
+                
+                // Add legend
+                ItemStack risingItem = guiManager.createGuiItem(
+                    Material.RED_CONCRETE, 
+                    "&c&lRising Prices", 
+                    Arrays.asList(
+                        "&7Items with rising prices have",
+                        "&7higher demand than supply.",
+                        "",
+                        "&7Good time to &fsell &7these items!"
+                    )
+                );
+                inventory.setItem(45, risingItem);
+                
+                ItemStack stableItem = guiManager.createGuiItem(
+                    Material.WHITE_CONCRETE, 
+                    "&f&lStable Prices", 
+                    Arrays.asList(
+                        "&7Items with stable prices have",
+                        "&7balanced supply and demand.",
+                        "",
+                        "&7Prices are at normal levels."
+                    )
+                );
+                inventory.setItem(46, stableItem);
+                
+                ItemStack fallingItem = guiManager.createGuiItem(
+                    Material.GREEN_CONCRETE, 
+                    "&a&lFalling Prices", 
+                    Arrays.asList(
+                        "&7Items with falling prices have",
+                        "&7higher supply than demand.",
+                        "",
+                        "&7Good time to &fbuy &7these items!"
+                    )
+                );
+                inventory.setItem(47, fallingItem);
+            }
+        }
+        
+        // Add refresh button
+        ItemStack refreshButton = guiManager.createGuiItem(
+            Material.CLOCK, 
+            "&e&lRefresh", 
+            Arrays.asList("&7Click to refresh market trends")
+        );
+        inventory.setItem(53, refreshButton);
+        
+        // Add back button
+        ItemStack backButton = guiManager.createGuiItem(
+            Material.ARROW, 
+            "&c&lBack to Admin Menu", 
+            Arrays.asList("&7Click to return to the main admin menu")
+        );
+        inventory.setItem(49, backButton);
+        
+        // Fill empty slots
+        guiManager.fillEmptySlots(inventory);
+        
+        // Open inventory
+        player.openInventory(inventory);
+        
+        // Store menu data
+        guiManager.menuData.put(player.getUniqueId(), new MenuData(MenuType.MARKET_TRENDS));
+    }
+
+    /**
+     * Handles clicks in the market trends menu
+     *
+     * @param guiManager The GUI manager
+     * @param plugin The plugin instance
+     * @param player The player
+     * @param slot The clicked slot
+     * @return True if the click was handled
+     */
+    public static boolean handleMarketTrendsClick(GuiManager guiManager, FrizzlenShop plugin, Player player, int slot) {
+        switch (slot) {
+            case 49: // Back button
+                guiManager.openShopAdminMenu(player);
+                return true;
+            
+            case 53: // Refresh button
+                openMarketTrendsMenu(guiManager, plugin, player);
+                return true;
+            
+            default:
+                return true; // Consume all clicks to prevent item taking
+        }
+    }
+
+    /**
+     * Formats a material name to be more readable
+     *
+     * @param materialName The material name to format
+     * @return The formatted name
+     */
+    private static String formatMaterialName(String materialName) {
+        String[] words = materialName.toLowerCase().split("_");
+        StringBuilder result = new StringBuilder();
+        
+        for (String word : words) {
+            if (!word.isEmpty()) {
+                result.append(Character.toUpperCase(word.charAt(0)))
+                     .append(word.substring(1))
+                     .append(" ");
+            }
+        }
+        
+        return result.toString().trim();
+    }
+
+    /**
+     * Opens the crafting opportunities menu
+     * This menu shows items that are profitable to craft based on current market prices
+     *
+     * @param guiManager The GUI manager
+     * @param plugin The plugin instance
+     * @param player The player
+     */
+    public static void openCraftingOpportunitiesMenu(GuiManager guiManager, FrizzlenShop plugin, Player player) {
+        // Create inventory
+        Inventory inventory = Bukkit.createInventory(null, 54, ChatColor.DARK_GREEN + "Crafting Opportunities");
+        
+        // Get market analyzer and crafting relation manager
+        MarketAnalyzer marketAnalyzer = plugin.getMarketAnalyzer();
+        CraftingRelationManager craftingManager = plugin.getCraftingRelationManager();
+        
+        if (marketAnalyzer == null || craftingManager == null) {
+            MessageUtils.sendErrorMessage(player, "Crafting opportunities are not available.");
+            return;
+        }
+        
+        // Create item list with profit margins
+        List<ProfitableItem> profitableItems = new ArrayList<>();
+        
+        // Check all craftable items
+        for (Material material : Material.values()) {
+            if (craftingManager.isCraftedItem(material) && material.isItem()) {
+                double profitMargin = marketAnalyzer.getCraftingProfitMargin(material);
+                if (profitMargin > 0) {
+                    profitableItems.add(new ProfitableItem(material, profitMargin));
+                }
+            }
+        }
+        
+        // Sort by profit margin (highest first)
+        profitableItems.sort(Comparator.comparing(ProfitableItem::getProfitMargin).reversed());
+        
+        // Limit to top 45 items (to fit in the inventory)
+        int count = Math.min(profitableItems.size(), 45);
+        
+        // Add items to inventory
+        for (int i = 0; i < count; i++) {
+            ProfitableItem profitItem = profitableItems.get(i);
+            
+            // Create item with profit information
+            ItemStack item = new ItemStack(profitItem.getMaterial());
+            ItemMeta meta = item.getItemMeta();
+            
+            // Format name
+            String name = ChatColor.GREEN + formatMaterialName(profitItem.getMaterial().toString());
+            meta.setDisplayName(name);
+            
+            // Create lore with crafting and profit information
+            List<String> lore = new ArrayList<>();
+            lore.add(ChatColor.GOLD + "Profit Margin: " + ChatColor.YELLOW + 
+                    String.format("%.1f%%", profitItem.getProfitMargin()));
+            
+            // Get component information
+            Map<Material, Integer> components = craftingManager.getComponents(profitItem.getMaterial());
+            
+            lore.add(ChatColor.LIGHT_PURPLE + "Components:");
+            for (Map.Entry<Material, Integer> entry : components.entrySet()) {
+                Material component = entry.getKey();
+                int quantity = entry.getValue();
+                double price = marketAnalyzer.getBasePrice(component);
+                
+                lore.add(ChatColor.GRAY + "- " + quantity + "x " + formatMaterialName(component.toString()) +
+                        ChatColor.GRAY + " (" + plugin.getEconomyManager().formatCurrency(price, "coin") + " each)");
+            }
+            
+            // Add total craft cost
+            double craftCost = craftingManager.calculateCraftValue(profitItem.getMaterial(), marketAnalyzer);
+            lore.add(ChatColor.AQUA + "Total Cost: " + 
+                    ChatColor.WHITE + plugin.getEconomyManager().formatCurrency(craftCost, "coin"));
+            
+            // Add market value
+            double marketValue = marketAnalyzer.getSuggestedPrice(profitItem.getMaterial(), true);
+            lore.add(ChatColor.AQUA + "Market Value: " + 
+                    ChatColor.WHITE + plugin.getEconomyManager().formatCurrency(marketValue, "coin"));
+            
+            // Add profit per item
+            double profit = marketValue - craftCost;
+            lore.add(ChatColor.GREEN + "Profit: " + 
+                    ChatColor.WHITE + plugin.getEconomyManager().formatCurrency(profit, "coin") + " per item");
+            
+            meta.setLore(lore);
+            item.setItemMeta(meta);
+            
+            // Add to inventory
+            inventory.setItem(i, item);
+        }
+        
+        // Add refresh button
+        ItemStack refreshButton = guiManager.createGuiItem(Material.EMERALD, 
+                ChatColor.GREEN + "Refresh", 
+                Collections.singletonList(ChatColor.GRAY + "Click to refresh the crafting opportunities"));
+        inventory.setItem(49, refreshButton);
+        
+        // Add back button
+        ItemStack backButton = guiManager.createGuiItem(Material.ARROW, 
+                ChatColor.RED + "Back to Admin Menu", 
+                Collections.singletonList(ChatColor.GRAY + "Return to the admin menu"));
+        inventory.setItem(53, backButton);
+        
+        // Fill empty slots
+        guiManager.fillEmptySlots(inventory);
+        
+        // Register menu in GUI manager
+        MenuData menuData = new MenuData(MenuType.CRAFTING_OPPORTUNITIES);
+        guiManager.menuData.put(player.getUniqueId(), menuData);
+        
+        // Open the inventory
+        player.openInventory(inventory);
+    }
+    
+    /**
+     * Handle click in the crafting opportunities menu
+     *
+     * @param guiManager The GUI manager
+     * @param plugin The plugin instance
+     * @param player The player who clicked
+     * @param slot The slot that was clicked
+     * @return True if the click was handled, false otherwise
+     */
+    public static boolean handleCraftingOpportunitiesClick(GuiManager guiManager, FrizzlenShop plugin, Player player, int slot) {
+        // Check for refresh button
+        if (slot == 49) {
+            openCraftingOpportunitiesMenu(guiManager, plugin, player);
+            return true;
+        }
+        
+        // Check for back button
+        if (slot == 53) {
+            openShopAdminMenu(guiManager, plugin, player);
+            return true;
+        }
+        
+        return true; // Consume all clicks to prevent item taking
+    }
+    
+    /**
+     * Helper class to track profitable items for the crafting opportunities menu
+     */
+    private static class ProfitableItem {
+        private final Material material;
+        private final double profitMargin;
+        
+        public ProfitableItem(Material material, double profitMargin) {
+            this.material = material;
+            this.profitMargin = profitMargin;
+        }
+        
+        public Material getMaterial() {
+            return material;
+        }
+        
+        public double getProfitMargin() {
+            return profitMargin;
+        }
     }
 } 

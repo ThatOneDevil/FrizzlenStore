@@ -369,6 +369,11 @@ public class PlayerShop implements Shop {
         updateStat("transactionCount", 1);
         updateStat("uniqueCustomers", 0.1); // This is a simplistic way to track unique customers
         
+        // Record transaction with DynamicPricingManager
+        if (plugin.getDynamicPricingManager() != null) {
+            plugin.getDynamicPricingManager().recordTransaction(shopItem, amount, true);
+        }
+        
         // Log the transaction
         plugin.getLogManager().logTransaction(player, this, item, amount, totalPrice, currency, true);
         
@@ -481,6 +486,11 @@ public class PlayerShop implements Shop {
         updateStat("totalPurchases", price);
         updateStat("totalExpenditure", price);
         updateStat("transactionCount", 1);
+        
+        // Record transaction with DynamicPricingManager
+        if (plugin.getDynamicPricingManager() != null) {
+            plugin.getDynamicPricingManager().recordTransaction(shopItem, amount, false);
+        }
         
         // Log the transaction
         plugin.getLogManager().logTransaction(player, this, item, amount, price, currency, false);

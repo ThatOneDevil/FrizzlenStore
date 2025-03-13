@@ -82,5 +82,15 @@ public enum MenuType {
     /**
      * The admin bulk item management menu
      */
-    ADMIN_BULK_ITEM_MANAGEMENT
+    ADMIN_BULK_ITEM_MANAGEMENT,
+    
+    /**
+     * The market trends menu
+     */
+    MARKET_TRENDS,
+    
+    /**
+     * The crafting opportunities menu
+     */
+    CRAFTING_OPPORTUNITIES
 } 

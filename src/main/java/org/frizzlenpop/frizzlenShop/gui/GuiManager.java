@@ -258,6 +258,26 @@ public class GuiManager {
     }
     
     /**
+     * Open market trends menu
+     *
+     * @param player The player to open the menu for
+     */
+    public void openMarketTrendsMenu(Player player) {
+        // Use the ShopAdminMenuHandler to handle the market trends menu
+        ShopAdminMenuHandler.openMarketTrendsMenu(this, plugin, player);
+    }
+    
+    /**
+     * Open crafting opportunities menu
+     *
+     * @param player The player to open the menu for
+     */
+    public void openCraftingOpportunitiesMenu(Player player) {
+        // Use the ShopAdminMenuHandler to handle the crafting opportunities menu
+        ShopAdminMenuHandler.openCraftingOpportunitiesMenu(this, plugin, player);
+    }
+    
+    /**
      * Handle click in any menu
      *
      * @param player The player who clicked
@@ -315,6 +335,12 @@ public class GuiManager {
                 
             case SHOP_STATISTICS:
                 return ShopAdminMenuHandler.handleStatisticsMenuClick(this, plugin, player, slot, clickType);
+                
+            case MARKET_TRENDS:
+                return ShopAdminMenuHandler.handleMarketTrendsClick(this, plugin, player, slot);
+                
+            case CRAFTING_OPPORTUNITIES:
+                return ShopAdminMenuHandler.handleCraftingOpportunitiesClick(this, plugin, player, slot);
                 
             default:
                 return false;

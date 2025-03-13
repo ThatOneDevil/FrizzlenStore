@@ -37,6 +37,20 @@ public class PlayerListener implements Listener {
         if (player.hasPermission("frizzlenshop.create")) {
             plugin.getShopManager().checkExpiredShops();
         }
+        
+        // Check if this is the player's first join
+        if (!player.hasPlayedBefore()) {
+            // Grant the starting coins to the player
+            double startingCoins = plugin.getConfigManager().getStartingCoins();
+            plugin.getEconomyManager().getEconomy().depositPlayer(player, startingCoins);
+            
+            // Send a welcome message
+            MessageUtils.sendMessage(player, "&a&lWelcome to the server!");
+            MessageUtils.sendMessage(player, "&eYou have been given &6" + startingCoins + " coins&e to start with.");
+            MessageUtils.sendMessage(player, "&eVisit shops by right-clicking on them to begin trading.");
+            
+            plugin.getLogger().info("Granted " + startingCoins + " starting coins to new player: " + player.getName());
+        }
     }
 
     @EventHandler

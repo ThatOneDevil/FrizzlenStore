@@ -336,4 +336,13 @@ public class EconomyManager {
     public boolean isVaultHooked() {
         return vaultHooked;
     }
+    
+    /**
+     * Get the Vault economy instance
+     *
+     * @return The Vault economy instance, or null if not hooked
+     */
+    public Economy getEconomy() {
+        return vaultEconomy;
+    }
 } 

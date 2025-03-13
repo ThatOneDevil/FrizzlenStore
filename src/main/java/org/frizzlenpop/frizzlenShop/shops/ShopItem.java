@@ -6,6 +6,8 @@ import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.Material;
 
 import java.util.UUID;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Represents an item in a shop
@@ -384,7 +386,86 @@ public class ShopItem {
     }
 
     /**
+     * Get the buy price with dynamic pricing applied if enabled
+     *
+     * @param plugin The plugin instance
+     * @return The dynamic buy price
+     */
+    public double getDynamicBuyPrice(org.frizzlenpop.frizzlenShop.FrizzlenShop plugin) {
+        // Check if dynamic pricing is enabled and manager exists
+        if (plugin.getConfigManager().isDynamicPricingEnabled() && plugin.getDynamicPricingManager() != null) {
+            // Calculate dynamic price
+            return plugin.getDynamicPricingManager().calculateDynamicBuyPrice(this, buyPrice);
+        }
+        
+        // Dynamic pricing disabled or manager not available, return normal price
+        return buyPrice;
+    }
+
+    /**
+     * Get the sell price with dynamic pricing applied if enabled
+     *
+     * @param plugin The plugin instance
+     * @return The dynamic sell price
+     */
+    public double getDynamicSellPrice(org.frizzlenpop.frizzlenShop.FrizzlenShop plugin) {
+        // Check if dynamic pricing is enabled and manager exists
+        if (plugin.getConfigManager().isDynamicPricingEnabled() && plugin.getDynamicPricingManager() != null) {
+            // Calculate dynamic price
+            return plugin.getDynamicPricingManager().calculateDynamicSellPrice(this, sellPrice);
+        }
+        
+        // Dynamic pricing disabled or manager not available, return normal price
+        return sellPrice;
+    }
+
+    /**
+     * Calculate the effective buy price for a given amount
+     * This applies quantity discounts and dynamic pricing if enabled
+     *
+     * @param amount The amount to buy
+     * @param plugin The plugin instance (optional, for dynamic pricing)
+     * @return The total price
+     */
+    public double calculateBuyPrice(int amount, org.frizzlenpop.frizzlenShop.FrizzlenShop plugin) {
+        // Get the base price (dynamic or normal)
+        double price = plugin != null ? getDynamicBuyPrice(plugin) : buyPrice;
+        
+        // Apply quantity discounts
+        if (amount > 1) {
+            // Apply volume discount (1% per item up to 10%)
+            double discount = Math.min(0.1, amount * 0.01);
+            price = price * (1.0 - discount);
+        }
+        
+        return price * amount;
+    }
+
+    /**
+     * Calculate the effective sell price for a given amount
+     * This applies quantity bonuses and dynamic pricing if enabled
+     *
+     * @param amount The amount to sell
+     * @param plugin The plugin instance (optional, for dynamic pricing)
+     * @return The total price
+     */
+    public double calculateSellPrice(int amount, org.frizzlenpop.frizzlenShop.FrizzlenShop plugin) {
+        // Get the base price (dynamic or normal)
+        double price = plugin != null ? getDynamicSellPrice(plugin) : sellPrice;
+        
+        // Apply quantity bonuses
+        if (amount > 1) {
+            // Apply volume bonus (0.5% per item up to 5%)
+            double bonus = Math.min(0.05, amount * 0.005);
+            price = price * (1.0 + bonus);
+        }
+        
+        return price * amount;
+    }
+
+    /**
      * Calculate the buy price for a specific amount
+     * Legacy method for backwards compatibility
      *
      * @param amount The amount to buy
      * @return The total price
@@ -395,11 +476,123 @@ public class ShopItem {
 
     /**
      * Calculate the sell price for a specific amount
+     * Legacy method for backwards compatibility
      *
      * @param amount The amount to sell
      * @return The total price
      */
     public double calculateSellPrice(int amount) {
         return sellPrice * amount;
+    }
+    
+    /**
+     * Checks if this item is crafted (has crafting components)
+     * 
+     * @return True if the item is crafted, false otherwise
+     */
+    public boolean isCrafted() {
+        // In a real implementation, this would check a crafting recipe database
+        // For now, we'll use a simple check for items that are typically crafted
+        Material material = item.getType();
+        return material.isItem() && !material.isBlock() && 
+               !material.name().contains("ORE") && 
+               !material.name().contains("INGOT") && 
+               !material.name().contains("LOG");
+    }
+    
+    /**
+     * Gets the crafting components for this item
+     * 
+     * @return A map of component materials to their quantities
+     */
+    public Map<Material, Integer> getCraftingComponents() {
+        // In a real implementation, this would lookup a crafting recipe database
+        // For now, we'll return a placeholder implementation with some common recipes
+        Map<Material, Integer> components = new HashMap<>();
+        
+        Material material = item.getType();
+        
+        // Example recipes
+        if (material == Material.DIAMOND_SWORD) {
+            components.put(Material.DIAMOND, 2);
+            components.put(Material.STICK, 1);
+        } else if (material == Material.IRON_PICKAXE) {
+            components.put(Material.IRON_INGOT, 3);
+            components.put(Material.STICK, 2);
+        } else if (material == Material.CRAFTING_TABLE) {
+            components.put(Material.OAK_PLANKS, 4);
+        }
+        
+        return components;
+    }
+    
+    /**
+     * Gets the multiplier for how much crafted item demand affects component prices
+     * 
+     * @return The crafting multiplier
+     */
+    public double getCraftingMultiplier() {
+        // For simplicity, we'll use a fixed value
+        // In a real implementation, this might be configurable or calculated
+        return 0.25; // 25% effect on components
+    }
+    
+    /**
+     * Calculates the value of this item based on its crafting components
+     * 
+     * @return The calculated crafting value
+     */
+    public double getCraftingValue() {
+        if (!isCrafted()) {
+            return 0.0;
+        }
+        
+        Map<Material, Integer> components = getCraftingComponents();
+        if (components.isEmpty()) {
+            return 0.0;
+        }
+        
+        double totalValue = 0.0;
+        
+        for (Map.Entry<Material, Integer> entry : components.entrySet()) {
+            Material component = entry.getKey();
+            int quantity = entry.getValue();
+            
+            // Get base price for component
+            // Note: In a real implementation, this would use the market analyzer
+            // or pricing system to get the current value
+            double basePrice = getBasePrice(component);
+            
+            totalValue += basePrice * quantity;
+        }
+        
+        // Add a crafting fee (15% of component cost)
+        totalValue *= 1.15;
+        
+        return totalValue;
+    }
+    
+    /**
+     * Helper method to get a base price for a material
+     * This is a simplified version - in practice this would use the pricing system
+     * 
+     * @param material The material to get a price for
+     * @return The base price
+     */
+    private double getBasePrice(Material material) {
+        // Simple pricing based on material type
+        if (material.name().contains("DIAMOND")) {
+            return 100.0;
+        } else if (material.name().contains("GOLD")) {
+            return 50.0;
+        } else if (material.name().contains("IRON")) {
+            return 25.0;
+        } else if (material.name().contains("STONE")) {
+            return 1.0;
+        } else if (material.name().contains("WOOD") || material.name().contains("PLANKS")) {
+            return 2.0;
+        } else {
+            return 5.0;
+        }
     }
 } 

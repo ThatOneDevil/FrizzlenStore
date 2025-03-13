@@ -581,4 +581,39 @@ public class DatabaseManager {
             return timestamp;
         }
     }
+    
+    /**
+     * Get the database connection
+     *
+     * @return The database connection
+     * @throws SQLException If an error occurs
+     */
+    public Connection getConnection() throws SQLException {
+        connect();
+        return connection;
+    }
+    
+    /**
+     * Get the table prefix for database tables
+     *
+     * @return The table prefix
+     */
+    public String getTablePrefix() {
+        // Get prefix from config, default to empty string
+        return plugin.getConfig().getString("database.table_prefix", "fs_");
+    }
+    
+    /**
+     * Execute an update query
+     *
+     * @param conn The database connection
+     * @param query The query to execute
+     * @return The number of affected rows
+     * @throws SQLException If an error occurs
+     */
+    public int executeUpdate(Connection conn, String query) throws SQLException {
+        try (Statement statement = conn.createStatement()) {
+            return statement.executeUpdate(query);
+        }
+    }
 } 

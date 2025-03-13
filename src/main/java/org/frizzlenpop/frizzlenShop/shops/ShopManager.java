@@ -540,4 +540,25 @@ public class ShopManager {
         // Sell price is typically lower than buy price
         return getDefaultBuyPrice(item) * 0.8;
     }
+
+    /**
+     * Register a shop with the shop manager
+     *
+     * @param shop The shop to register
+     * @return True if the shop was registered successfully, false otherwise
+     */
+    public boolean registerShop(Shop shop) {
+        if (shop == null || shops.containsKey(shop.getId())) {
+            return false;
+        }
+        
+        shops.put(shop.getId(), shop);
+        
+        // If it's a player shop, add it to the player's shops list
+        if (!shop.isAdminShop() && shop.getOwner() != null) {
+            playerShops.computeIfAbsent(shop.getOwner(), k -> new ArrayList<>()).add(shop.getId());
+        }
+        
+        return true;
+    }
 } 
