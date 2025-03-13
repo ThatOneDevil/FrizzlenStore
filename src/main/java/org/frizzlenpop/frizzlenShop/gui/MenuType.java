@@ -77,5 +77,10 @@ public enum MenuType {
     /**
      * The shop items menu
      */
-    SHOP_ITEMS
+    SHOP_ITEMS,
+    
+    /**
+     * The admin bulk item management menu
+     */
+    ADMIN_BULK_ITEM_MANAGEMENT
 } 

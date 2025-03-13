@@ -104,6 +104,25 @@ public class MenuData {
     }
     
     /**
+     * Get all data
+     *
+     * @return The data map
+     */
+    public Map<String, Object> getAllData() {
+        return new HashMap<>(data);
+    }
+    
+    /**
+     * Set a data value
+     *
+     * @param key The data key
+     * @param value The data value
+     */
+    public void setData(String key, Object value) {
+        data.put(key, value);
+    }
+    
+    /**
      * Get a string data value
      *
      * @param key The data key
@@ -156,24 +175,5 @@ public class MenuData {
     public UUID getUUID(String key) {
         Object value = data.get(key);
         return value instanceof UUID ? (UUID) value : null;
-    }
-    
-    /**
-     * Set a data value
-     *
-     * @param key The data key
-     * @param value The data value
-     */
-    public void setData(String key, Object value) {
-        data.put(key, value);
-    }
-    
-    /**
-     * Get all data
-     *
-     * @return The data map
-     */
-    public Map<String, Object> getAllData() {
-        return new HashMap<>(data);
     }
 } 

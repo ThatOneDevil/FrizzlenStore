@@ -251,6 +251,60 @@ public class ConfigManager {
     }
 
     /**
+     * Set the global price multiplier
+     *
+     * @param multiplier The new global price multiplier
+     */
+    public void setGlobalPriceMultiplier(double multiplier) {
+        config.set("economy.global-price-multiplier", multiplier);
+    }
+
+    /**
+     * Set the default buy price for items
+     *
+     * @param price The new default buy price
+     */
+    public void setDefaultBuyPrice(double price) {
+        config.set("economy.default-buy-price", price);
+    }
+
+    /**
+     * Set the default sell price for items
+     *
+     * @param price The new default sell price
+     */
+    public void setDefaultSellPrice(double price) {
+        config.set("economy.default-sell-price", price);
+    }
+
+    /**
+     * Set the sell price ratio
+     *
+     * @param ratio The new sell price ratio
+     */
+    public void setSellPriceRatio(double ratio) {
+        config.set("economy.sell-price-ratio", ratio);
+    }
+
+    /**
+     * Set whether dynamic pricing is enabled
+     *
+     * @param enabled Whether dynamic pricing should be enabled
+     */
+    public void setDynamicPricingEnabled(boolean enabled) {
+        config.set("economy.dynamic-pricing.enabled", enabled);
+    }
+
+    /**
+     * Set whether price fluctuation is enabled
+     *
+     * @param enabled Whether price fluctuation should be enabled
+     */
+    public void setPriceFluctuationEnabled(boolean enabled) {
+        config.set("economy.price-fluctuation.enabled", enabled);
+    }
+
+    /**
      * Get the tax rate for a specific category
      *
      * @param category The category
@@ -270,18 +324,46 @@ public class ConfigManager {
     }
 
     /**
-     * Get the tax collection account
-     * This is the player UUID that receives tax revenue
+     * Set the global tax rate
      *
-     * @return The UUID of the tax collection account, or null if taxes go to the server
+     * @param rate The new global tax rate
+     */
+    public void setGlobalTaxRate(double rate) {
+        config.set("economy.taxes.global-rate", rate);
+    }
+
+    /**
+     * Get the total tax collected today
+     *
+     * @return The total tax collected today
+     */
+    public double getTaxCollectedToday() {
+        // In a real implementation, this would be calculated from a database
+        return config.getDouble("economy.taxes.collected-today", 0.0);
+    }
+
+    /**
+     * Get the total tax collected overall
+     *
+     * @return The total tax collected
+     */
+    public double getTotalTaxCollected() {
+        // In a real implementation, this would be calculated from a database
+        return config.getDouble("economy.taxes.total-collected", 0.0);
+    }
+
+    /**
+     * Get the UUID of the account where taxes are collected
+     *
+     * @return The UUID of the tax collection account, or null if taxes are removed from economy
      */
     public UUID getTaxCollectionAccount() {
-        String accountString = config.getString("economy.taxes.collection-account");
-        if (accountString == null || accountString.isEmpty()) {
+        String uuidString = config.getString("economy.taxes.collection-account");
+        if (uuidString == null || uuidString.isEmpty()) {
             return null;
         }
         try {
-            return UUID.fromString(accountString);
+            return UUID.fromString(uuidString);
         } catch (IllegalArgumentException e) {
             return null;
         }
@@ -298,33 +380,12 @@ public class ConfigManager {
 
     /**
      * Get the maximum tax amount
+     * A value of 0 means no maximum
      *
      * @return The maximum tax amount
      */
     public double getMaximumTax() {
-        return config.getDouble("economy.taxes.maximum", 1000.0);
-    }
-
-    /**
-     * Get the amount of tax collected today
-     *
-     * @return The amount of tax collected today
-     */
-    public double getTaxCollectedToday() {
-        // In a real implementation, this would be calculated from a database
-        // For now, return a dummy value
-        return 1500.0;
-    }
-
-    /**
-     * Get the total amount of tax collected
-     *
-     * @return The total amount of tax collected
-     */
-    public double getTotalTaxCollected() {
-        // In a real implementation, this would be calculated from a database
-        // For now, return a dummy value
-        return 25000.0;
+        return config.getDouble("economy.taxes.maximum", 0.0);
     }
 
     /**
@@ -333,15 +394,7 @@ public class ConfigManager {
      * @return The list of available currencies
      */
     public List<String> getAvailableCurrencies() {
-        List<String> currencies = config.getStringList("economy.currencies");
-        if (currencies.isEmpty()) {
-            // Default currencies if not specified in config
-            currencies = new ArrayList<>();
-            currencies.add(getDefaultCurrency());
-            currencies.add("gems");
-            currencies.add("points");
-        }
-        return currencies;
+        return config.getStringList("economy.currencies");
     }
 
     /**
@@ -360,5 +413,41 @@ public class ConfigManager {
      */
     public int getShopRentDays() {
         return config.getInt("player-shops.rent-days", 30);
+    }
+
+    /**
+     * Set the minimum tax amount
+     *
+     * @param amount The new minimum tax amount
+     */
+    public void setMinimumTax(double amount) {
+        config.set("economy.taxes.minimum", amount);
+    }
+
+    /**
+     * Set the maximum tax amount
+     *
+     * @param amount The new maximum tax amount (0 for no maximum)
+     */
+    public void setMaximumTax(double amount) {
+        config.set("economy.taxes.maximum", amount);
+    }
+
+    /**
+     * Set the admin shop tax rate
+     *
+     * @param rate The new admin shop tax rate
+     */
+    public void setAdminShopTaxRate(double rate) {
+        config.set("admin-shops.tax-rate", rate);
+    }
+
+    /**
+     * Set the player shop tax rate
+     *
+     * @param rate The new player shop tax rate
+     */
+    public void setPlayerShopTaxRate(double rate) {
+        config.set("player-shops.tax-rate", rate);
     }
 } 

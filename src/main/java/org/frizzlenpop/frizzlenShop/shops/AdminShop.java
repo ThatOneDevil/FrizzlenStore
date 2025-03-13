@@ -1,6 +1,7 @@
 package org.frizzlenpop.frizzlenShop.shops;
 
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.frizzlenpop.frizzlenShop.FrizzlenShop;
@@ -471,5 +472,239 @@ public class AdminShop implements Shop {
             }
         }
         return null;
+    }
+
+    /**
+     * Add multiple items to the shop at once
+     * Useful for quickly populating admin shops with predefined items
+     *
+     * @param items List of items to add
+     * @param currency The currency to use for all items
+     * @return The number of items successfully added
+     */
+    public int addItems(List<ItemStack> items, String currency) {
+        int added = 0;
+        
+        for (ItemStack item : items) {
+            // Set default prices based on item value
+            double buyPrice = plugin.getShopManager().getDefaultBuyPrice(item);
+            double sellPrice = plugin.getShopManager().getDefaultSellPrice(item);
+            
+            // Add the item with unlimited stock
+            if (addItem(item, buyPrice, sellPrice, currency, -1)) {
+                added++;
+            }
+        }
+        
+        return added;
+    }
+    
+    /**
+     * Add all items from a specific category to the shop
+     *
+     * @param category The category to add (tools, weapons, armor, blocks, food, etc.)
+     * @param currency The currency to use
+     * @return The number of items added
+     */
+    public int addCategoryItems(String category, String currency) {
+        List<ItemStack> categoryItems = generateCategoryItems(category);
+        return addItems(categoryItems, currency);
+    }
+    
+    /**
+     * Generate a list of common items for a category
+     *
+     * @param category The category name
+     * @return A list of items in that category
+     */
+    private List<ItemStack> generateCategoryItems(String category) {
+        List<ItemStack> items = new ArrayList<>();
+        
+        switch (category.toLowerCase()) {
+            case "tools":
+                // Add common tools
+                items.add(new ItemStack(Material.WOODEN_PICKAXE));
+                items.add(new ItemStack(Material.STONE_PICKAXE));
+                items.add(new ItemStack(Material.IRON_PICKAXE));
+                items.add(new ItemStack(Material.GOLDEN_PICKAXE));
+                items.add(new ItemStack(Material.DIAMOND_PICKAXE));
+                items.add(new ItemStack(Material.NETHERITE_PICKAXE));
+                
+                items.add(new ItemStack(Material.WOODEN_AXE));
+                items.add(new ItemStack(Material.STONE_AXE));
+                items.add(new ItemStack(Material.IRON_AXE));
+                items.add(new ItemStack(Material.GOLDEN_AXE));
+                items.add(new ItemStack(Material.DIAMOND_AXE));
+                items.add(new ItemStack(Material.NETHERITE_AXE));
+                
+                items.add(new ItemStack(Material.WOODEN_SHOVEL));
+                items.add(new ItemStack(Material.STONE_SHOVEL));
+                items.add(new ItemStack(Material.IRON_SHOVEL));
+                items.add(new ItemStack(Material.GOLDEN_SHOVEL));
+                items.add(new ItemStack(Material.DIAMOND_SHOVEL));
+                items.add(new ItemStack(Material.NETHERITE_SHOVEL));
+                
+                items.add(new ItemStack(Material.WOODEN_HOE));
+                items.add(new ItemStack(Material.STONE_HOE));
+                items.add(new ItemStack(Material.IRON_HOE));
+                items.add(new ItemStack(Material.GOLDEN_HOE));
+                items.add(new ItemStack(Material.DIAMOND_HOE));
+                items.add(new ItemStack(Material.NETHERITE_HOE));
+                
+                items.add(new ItemStack(Material.FISHING_ROD));
+                items.add(new ItemStack(Material.FLINT_AND_STEEL));
+                items.add(new ItemStack(Material.SHEARS));
+                break;
+                
+            case "weapons":
+                // Add common weapons
+                items.add(new ItemStack(Material.WOODEN_SWORD));
+                items.add(new ItemStack(Material.STONE_SWORD));
+                items.add(new ItemStack(Material.IRON_SWORD));
+                items.add(new ItemStack(Material.GOLDEN_SWORD));
+                items.add(new ItemStack(Material.DIAMOND_SWORD));
+                items.add(new ItemStack(Material.NETHERITE_SWORD));
+                
+                items.add(new ItemStack(Material.BOW));
+                items.add(new ItemStack(Material.CROSSBOW));
+                items.add(new ItemStack(Material.TRIDENT));
+                
+                items.add(new ItemStack(Material.ARROW, 64));
+                items.add(new ItemStack(Material.SPECTRAL_ARROW, 16));
+                items.add(new ItemStack(Material.TIPPED_ARROW, 8));
+                break;
+                
+            case "armor":
+                // Add common armor
+                items.add(new ItemStack(Material.LEATHER_HELMET));
+                items.add(new ItemStack(Material.LEATHER_CHESTPLATE));
+                items.add(new ItemStack(Material.LEATHER_LEGGINGS));
+                items.add(new ItemStack(Material.LEATHER_BOOTS));
+                
+                items.add(new ItemStack(Material.CHAINMAIL_HELMET));
+                items.add(new ItemStack(Material.CHAINMAIL_CHESTPLATE));
+                items.add(new ItemStack(Material.CHAINMAIL_LEGGINGS));
+                items.add(new ItemStack(Material.CHAINMAIL_BOOTS));
+                
+                items.add(new ItemStack(Material.IRON_HELMET));
+                items.add(new ItemStack(Material.IRON_CHESTPLATE));
+                items.add(new ItemStack(Material.IRON_LEGGINGS));
+                items.add(new ItemStack(Material.IRON_BOOTS));
+                
+                items.add(new ItemStack(Material.GOLDEN_HELMET));
+                items.add(new ItemStack(Material.GOLDEN_CHESTPLATE));
+                items.add(new ItemStack(Material.GOLDEN_LEGGINGS));
+                items.add(new ItemStack(Material.GOLDEN_BOOTS));
+                
+                items.add(new ItemStack(Material.DIAMOND_HELMET));
+                items.add(new ItemStack(Material.DIAMOND_CHESTPLATE));
+                items.add(new ItemStack(Material.DIAMOND_LEGGINGS));
+                items.add(new ItemStack(Material.DIAMOND_BOOTS));
+                
+                items.add(new ItemStack(Material.NETHERITE_HELMET));
+                items.add(new ItemStack(Material.NETHERITE_CHESTPLATE));
+                items.add(new ItemStack(Material.NETHERITE_LEGGINGS));
+                items.add(new ItemStack(Material.NETHERITE_BOOTS));
+                
+                items.add(new ItemStack(Material.SHIELD));
+                break;
+                
+            case "food":
+                // Add common food items
+                items.add(new ItemStack(Material.APPLE, 64));
+                items.add(new ItemStack(Material.BREAD, 64));
+                items.add(new ItemStack(Material.COOKED_BEEF, 64));
+                items.add(new ItemStack(Material.COOKED_PORKCHOP, 64));
+                items.add(new ItemStack(Material.COOKED_CHICKEN, 64));
+                items.add(new ItemStack(Material.COOKED_MUTTON, 64));
+                items.add(new ItemStack(Material.COOKED_RABBIT, 64));
+                items.add(new ItemStack(Material.COOKED_COD, 64));
+                items.add(new ItemStack(Material.COOKED_SALMON, 64));
+                items.add(new ItemStack(Material.GOLDEN_APPLE, 16));
+                items.add(new ItemStack(Material.ENCHANTED_GOLDEN_APPLE, 1));
+                items.add(new ItemStack(Material.CAKE));
+                items.add(new ItemStack(Material.COOKIE, 64));
+                items.add(new ItemStack(Material.PUMPKIN_PIE, 64));
+                items.add(new ItemStack(Material.CARROT, 64));
+                items.add(new ItemStack(Material.GOLDEN_CARROT, 64));
+                items.add(new ItemStack(Material.BAKED_POTATO, 64));
+                items.add(new ItemStack(Material.HONEY_BOTTLE, 16));
+                break;
+                
+            case "blocks":
+                // Add common building blocks
+                items.add(new ItemStack(Material.STONE, 64));
+                items.add(new ItemStack(Material.GRANITE, 64));
+                items.add(new ItemStack(Material.DIORITE, 64));
+                items.add(new ItemStack(Material.ANDESITE, 64));
+                items.add(new ItemStack(Material.DEEPSLATE, 64));
+                
+                items.add(new ItemStack(Material.OAK_LOG, 64));
+                items.add(new ItemStack(Material.SPRUCE_LOG, 64));
+                items.add(new ItemStack(Material.BIRCH_LOG, 64));
+                items.add(new ItemStack(Material.JUNGLE_LOG, 64));
+                items.add(new ItemStack(Material.ACACIA_LOG, 64));
+                items.add(new ItemStack(Material.DARK_OAK_LOG, 64));
+                
+                items.add(new ItemStack(Material.OAK_PLANKS, 64));
+                items.add(new ItemStack(Material.SPRUCE_PLANKS, 64));
+                items.add(new ItemStack(Material.BIRCH_PLANKS, 64));
+                items.add(new ItemStack(Material.JUNGLE_PLANKS, 64));
+                items.add(new ItemStack(Material.ACACIA_PLANKS, 64));
+                items.add(new ItemStack(Material.DARK_OAK_PLANKS, 64));
+                
+                items.add(new ItemStack(Material.COBBLESTONE, 64));
+                items.add(new ItemStack(Material.DIRT, 64));
+                items.add(new ItemStack(Material.GRASS_BLOCK, 64));
+                items.add(new ItemStack(Material.SAND, 64));
+                items.add(new ItemStack(Material.GRAVEL, 64));
+                
+                items.add(new ItemStack(Material.GLASS, 64));
+                items.add(new ItemStack(Material.BRICKS, 64));
+                items.add(new ItemStack(Material.BOOKSHELF, 64));
+                break;
+                
+            case "redstone":
+                // Add redstone components
+                items.add(new ItemStack(Material.REDSTONE, 64));
+                items.add(new ItemStack(Material.REDSTONE_TORCH, 64));
+                items.add(new ItemStack(Material.REDSTONE_BLOCK, 64));
+                items.add(new ItemStack(Material.REPEATER, 64));
+                items.add(new ItemStack(Material.COMPARATOR, 64));
+                items.add(new ItemStack(Material.PISTON, 64));
+                items.add(new ItemStack(Material.STICKY_PISTON, 64));
+                items.add(new ItemStack(Material.OBSERVER, 64));
+                items.add(new ItemStack(Material.DISPENSER, 64));
+                items.add(new ItemStack(Material.DROPPER, 64));
+                items.add(new ItemStack(Material.HOPPER, 64));
+                items.add(new ItemStack(Material.LEVER, 64));
+                items.add(new ItemStack(Material.STONE_BUTTON, 64));
+                items.add(new ItemStack(Material.STONE_PRESSURE_PLATE, 64));
+                items.add(new ItemStack(Material.REDSTONE_LAMP, 64));
+                break;
+                
+            case "potions":
+                // Basic potions (Note: Complete potion creation would require more complex code)
+                items.add(new ItemStack(Material.POTION));
+                items.add(new ItemStack(Material.SPLASH_POTION));
+                items.add(new ItemStack(Material.LINGERING_POTION));
+                items.add(new ItemStack(Material.GLASS_BOTTLE, 64));
+                items.add(new ItemStack(Material.BREWING_STAND));
+                items.add(new ItemStack(Material.BLAZE_POWDER, 64));
+                items.add(new ItemStack(Material.NETHER_WART, 64));
+                items.add(new ItemStack(Material.GLISTERING_MELON_SLICE, 64));
+                items.add(new ItemStack(Material.SPIDER_EYE, 64));
+                items.add(new ItemStack(Material.FERMENTED_SPIDER_EYE, 64));
+                items.add(new ItemStack(Material.GUNPOWDER, 64));
+                items.add(new ItemStack(Material.SUGAR, 64));
+                items.add(new ItemStack(Material.GOLDEN_CARROT, 64));
+                break;
+                
+            default:
+                // No items for unknown category
+                break;
+        }
+        
+        return items;
     }
 } 

@@ -1,6 +1,7 @@
 package org.frizzlenpop.frizzlenShop.commands;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -10,13 +11,16 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.permissions.PermissionAttachmentInfo;
 import org.frizzlenpop.frizzlenShop.FrizzlenShop;
+import org.frizzlenpop.frizzlenShop.config.ConfigManager;
 import org.frizzlenpop.frizzlenShop.shops.AdminShop;
 import org.frizzlenpop.frizzlenShop.shops.Shop;
+import org.frizzlenpop.frizzlenShop.shops.ShopItem;
 import org.frizzlenpop.frizzlenShop.utils.MessageUtils;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -29,7 +33,8 @@ public class ShopAdminCommand implements CommandExecutor, TabCompleter {
 
     private final FrizzlenShop plugin;
     private final List<String> subCommands = Arrays.asList(
-            "create", "remove", "edit", "price", "reload", "logs", "tax", "maintenance"
+            "create", "remove", "edit", "price", "reload", "logs", "tax", "maintenance",
+            "populate", "template", "globalshop"
     );
 
     /**
@@ -77,6 +82,14 @@ public class ShopAdminCommand implements CommandExecutor, TabCompleter {
                 return handleTaxCommand(sender, args);
             case "maintenance":
                 return handleMaintenanceCommand(sender, args);
+            case "populate":
+                return handlePopulateCommand(sender, args);
+            case "template":
+                return handleTemplateCommand(sender, args);
+            case "globalshop":
+                return handleGlobalShopCommand(sender, args);
+            case "shop":
+                return handleShopCommand(sender, args);
             default:
                 MessageUtils.sendErrorMessage(sender, "Unknown sub-command. Use /shopadmin help for a list of commands.");
                 return true;
@@ -193,9 +206,8 @@ public class ShopAdminCommand implements CommandExecutor, TabCompleter {
 
         Player player = (Player) sender;
 
-        // This would open a GUI for editing shop properties
-        // For now, just provide basic implementation
-        MessageUtils.sendMessage(player, "&eNot fully implemented yet. Use the GUI for shop administration.");
+        // Open the shop admin menu
+        plugin.getGuiManager().openShopAdminMenu(player);
         return true;
     }
 
@@ -207,42 +219,111 @@ public class ShopAdminCommand implements CommandExecutor, TabCompleter {
      * @return True if the command was handled, false otherwise
      */
     private boolean handlePriceCommand(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("frizzlenshop.admin.prices")) {
-            MessageUtils.sendErrorMessage(sender, "You don't have permission to change shop prices.");
+        if (!sender.hasPermission("frizzlenshop.admin.price")) {
+            MessageUtils.sendErrorMessage(sender, "You don't have permission to use this command.");
             return true;
         }
-
-        if (!(sender instanceof Player)) {
-            MessageUtils.sendErrorMessage(sender, "This command can only be used by players.");
-            return true;
-        }
-
-        Player player = (Player) sender;
-
-        if (args.length < 5) {
-            MessageUtils.sendErrorMessage(player, "Usage: /shopadmin price <shop-id> <buy-price> <sell-price>");
-            return true;
-        }
-
-        try {
-            UUID shopId = UUID.fromString(args[1]);
-            double buyPrice = Double.parseDouble(args[2]);
-            double sellPrice = Double.parseDouble(args[3]);
-            String currency = args.length > 4 ? args[4] : plugin.getEconomyManager().getDefaultCurrency();
-
-            Shop shop = plugin.getShopManager().getShop(shopId);
-            if (shop == null) {
-                MessageUtils.sendErrorMessage(player, "Shop not found with ID: " + shopId);
-                return true;
+        
+        if (args.length == 1) {
+            // Show price management GUI
+            if (sender instanceof Player) {
+                plugin.getGuiManager().openPriceManagementMenu((Player) sender);
             }
-
-            // For now, we don't have a specific item to modify prices for
-            // In a real implementation, you'd want to have a way to specify the item
-            MessageUtils.sendMessage(player, "&eNot fully implemented yet. Use the GUI for price administration.");
-        } catch (IllegalArgumentException e) {
-            MessageUtils.sendErrorMessage(player, "Invalid arguments. Make sure the shop ID is a valid UUID and prices are valid numbers.");
+            return true;
         }
-
+        
+        // Handle subcommands
+        String subCommand = args[1].toLowerCase();
+        
+        switch (subCommand) {
+            case "help":
+                MessageUtils.sendMessage(sender, "&e===== Price Management Commands =====");
+                MessageUtils.sendMessage(sender, "&7/shopadmin price &f- Open price management GUI");
+                MessageUtils.sendMessage(sender, "&7/shopadmin price multiplier <value> &f- Set global price multiplier");
+                MessageUtils.sendMessage(sender, "&7/shopadmin price default <buy|sell> <value> &f- Set default buy/sell price");
+                MessageUtils.sendMessage(sender, "&7/shopadmin price ratio <value> &f- Set sell price ratio");
+                break;
+                
+            case "multiplier":
+                if (args.length < 3) {
+                    MessageUtils.sendErrorMessage(sender, "Usage: /shopadmin price multiplier <value>");
+                    return true;
+                }
+                
+                try {
+                    double multiplier = Double.parseDouble(args[2]);
+                    if (multiplier < 0.1) {
+                        MessageUtils.sendErrorMessage(sender, "Multiplier must be at least 0.1");
+                        return true;
+                    }
+                    
+                    plugin.getConfigManager().setGlobalPriceMultiplier(multiplier);
+                    plugin.getConfigManager().saveConfig();
+                    MessageUtils.sendSuccessMessage(sender, "Global price multiplier set to " + multiplier);
+                } catch (NumberFormatException e) {
+                    MessageUtils.sendErrorMessage(sender, "Invalid number format");
+                }
+                break;
+                
+            case "default":
+                if (args.length < 4) {
+                    MessageUtils.sendErrorMessage(sender, "Usage: /shopadmin price default <buy|sell> <value>");
+                    return true;
+                }
+                
+                String priceType = args[2].toLowerCase();
+                if (!priceType.equals("buy") && !priceType.equals("sell")) {
+                    MessageUtils.sendErrorMessage(sender, "Price type must be 'buy' or 'sell'");
+                    return true;
+                }
+                
+                try {
+                    double price = Double.parseDouble(args[3]);
+                    if (price < 0.01) {
+                        MessageUtils.sendErrorMessage(sender, "Price must be at least 0.01");
+                        return true;
+                    }
+                    
+                    if (priceType.equals("buy")) {
+                        plugin.getConfigManager().setDefaultBuyPrice(price);
+                        MessageUtils.sendSuccessMessage(sender, "Default buy price set to " + price);
+                    } else {
+                        plugin.getConfigManager().setDefaultSellPrice(price);
+                        MessageUtils.sendSuccessMessage(sender, "Default sell price set to " + price);
+                    }
+                    
+                    plugin.getConfigManager().saveConfig();
+                } catch (NumberFormatException e) {
+                    MessageUtils.sendErrorMessage(sender, "Invalid number format");
+                }
+                break;
+                
+            case "ratio":
+                if (args.length < 3) {
+                    MessageUtils.sendErrorMessage(sender, "Usage: /shopadmin price ratio <value>");
+                    return true;
+                }
+                
+                try {
+                    double ratio = Double.parseDouble(args[2]);
+                    if (ratio < 0.1 || ratio > 1.0) {
+                        MessageUtils.sendErrorMessage(sender, "Ratio must be between 0.1 and 1.0");
+                        return true;
+                    }
+                    
+                    plugin.getConfigManager().setSellPriceRatio(ratio);
+                    plugin.getConfigManager().saveConfig();
+                    MessageUtils.sendSuccessMessage(sender, "Sell price ratio set to " + ratio);
+                } catch (NumberFormatException e) {
+                    MessageUtils.sendErrorMessage(sender, "Invalid number format");
+                }
+                break;
+                
+            default:
+                MessageUtils.sendErrorMessage(sender, "Unknown price subcommand. Use /shopadmin price help for help.");
+                break;
+        }
+        
         return true;
     }
 
@@ -550,57 +631,465 @@ public class ShopAdminCommand implements CommandExecutor, TabCompleter {
     }
 
     /**
-     * Handles the /shopadmin tax command
+     * Handle the tax command
      *
      * @param sender The command sender
-     * @param args   The command arguments
-     * @return True if the command was handled, false otherwise
+     * @param args The command arguments
+     * @return True if the command was handled
      */
     private boolean handleTaxCommand(CommandSender sender, String[] args) {
         if (!sender.hasPermission("frizzlenshop.admin.tax")) {
-            MessageUtils.sendErrorMessage(sender, "You don't have permission to change tax settings.");
+            MessageUtils.sendErrorMessage(sender, "You don't have permission to use this command.");
             return true;
         }
-
-        if (args.length < 2) {
-            MessageUtils.sendMessage(sender, "&eCurrent tax rates:");
-            MessageUtils.sendMessage(sender, "&7Default: &e" + plugin.getConfigManager().getDefaultTaxRate() + "%");
-            MessageUtils.sendMessage(sender, "&7Admin Shops: &e" + plugin.getConfigManager().getAdminShopTaxRate() + "%");
-            MessageUtils.sendMessage(sender, "&7Player Shops: &e" + plugin.getConfigManager().getPlayerShopTaxRate() + "%");
+        
+        if (args.length == 1) {
+            // Show current tax rates
+            ConfigManager config = plugin.getConfigManager();
+            MessageUtils.sendMessage(sender, "&e===== Current Tax Rates =====");
+            MessageUtils.sendMessage(sender, "&7Global: &f" + (config.getGlobalTaxRate() * 100) + "%");
+            MessageUtils.sendMessage(sender, "&7Admin Shops: &f" + (config.getAdminShopTaxRate() * 100) + "%");
+            MessageUtils.sendMessage(sender, "&7Player Shops: &f" + (config.getPlayerShopTaxRate() * 100) + "%");
+            MessageUtils.sendMessage(sender, "&7Minimum Tax: &f" + config.getMinimumTax());
+            MessageUtils.sendMessage(sender, "&7Maximum Tax: &f" + (config.getMaximumTax() == 0 ? "No maximum" : config.getMaximumTax()));
+            
+            // If sender is a player, offer to open the tax management GUI
+            if (sender instanceof Player) {
+                MessageUtils.sendMessage(sender, "&eUse &f/shopadmin tax gui &eto open the tax management GUI");
+            }
+            
             return true;
         }
-
-        // This would modify tax rates in the config
-        // For now, just provide basic feedback
-        MessageUtils.sendMessage(sender, "&eChanging tax rates is not fully implemented yet.");
+        
+        // Handle subcommands
+        String subCommand = args[1].toLowerCase();
+        
+        switch (subCommand) {
+            case "help":
+                MessageUtils.sendMessage(sender, "&e===== Tax Management Commands =====");
+                MessageUtils.sendMessage(sender, "&7/shopadmin tax &f- Show current tax rates");
+                MessageUtils.sendMessage(sender, "&7/shopadmin tax gui &f- Open tax management GUI (player only)");
+                MessageUtils.sendMessage(sender, "&7/shopadmin tax global <rate> &f- Set global tax rate (percentage)");
+                MessageUtils.sendMessage(sender, "&7/shopadmin tax admin <rate> &f- Set admin shop tax rate (percentage)");
+                MessageUtils.sendMessage(sender, "&7/shopadmin tax player <rate> &f- Set player shop tax rate (percentage)");
+                MessageUtils.sendMessage(sender, "&7/shopadmin tax min <amount> &f- Set minimum tax amount");
+                MessageUtils.sendMessage(sender, "&7/shopadmin tax max <amount> &f- Set maximum tax amount (0 for no maximum)");
+                break;
+                
+            case "gui":
+                if (!(sender instanceof Player)) {
+                    MessageUtils.sendErrorMessage(sender, "This command can only be used by players.");
+                    return true;
+                }
+                
+                // Open tax management GUI
+                plugin.getGuiManager().openTaxManagementMenu((Player) sender);
+                break;
+                
+            case "global":
+                if (args.length < 3) {
+                    MessageUtils.sendErrorMessage(sender, "Usage: /shopadmin tax global <rate>");
+                    return true;
+                }
+                
+                try {
+                    double rate = Double.parseDouble(args[2]);
+                    if (rate < 0 || rate > 50) {
+                        MessageUtils.sendErrorMessage(sender, "Tax rate must be between 0 and 50 percent");
+                        return true;
+                    }
+                    
+                    plugin.getConfigManager().setGlobalTaxRate(rate / 100);
+                    plugin.getConfigManager().saveConfig();
+                    MessageUtils.sendSuccessMessage(sender, "Global tax rate set to " + rate + "%");
+                } catch (NumberFormatException e) {
+                    MessageUtils.sendErrorMessage(sender, "Invalid number format");
+                }
+                break;
+                
+            case "admin":
+                if (args.length < 3) {
+                    MessageUtils.sendErrorMessage(sender, "Usage: /shopadmin tax admin <rate>");
+                    return true;
+                }
+                
+                try {
+                    double rate = Double.parseDouble(args[2]);
+                    if (rate < 0 || rate > 50) {
+                        MessageUtils.sendErrorMessage(sender, "Tax rate must be between 0 and 50 percent");
+                        return true;
+                    }
+                    
+                    plugin.getConfigManager().setAdminShopTaxRate(rate / 100);
+                    plugin.getConfigManager().saveConfig();
+                    MessageUtils.sendSuccessMessage(sender, "Admin shop tax rate set to " + rate + "%");
+                } catch (NumberFormatException e) {
+                    MessageUtils.sendErrorMessage(sender, "Invalid number format");
+                }
+                break;
+                
+            case "player":
+                if (args.length < 3) {
+                    MessageUtils.sendErrorMessage(sender, "Usage: /shopadmin tax player <rate>");
+                    return true;
+                }
+                
+                try {
+                    double rate = Double.parseDouble(args[2]);
+                    if (rate < 0 || rate > 50) {
+                        MessageUtils.sendErrorMessage(sender, "Tax rate must be between 0 and 50 percent");
+                        return true;
+                    }
+                    
+                    plugin.getConfigManager().setPlayerShopTaxRate(rate / 100);
+                    plugin.getConfigManager().saveConfig();
+                    MessageUtils.sendSuccessMessage(sender, "Player shop tax rate set to " + rate + "%");
+                } catch (NumberFormatException e) {
+                    MessageUtils.sendErrorMessage(sender, "Invalid number format");
+                }
+                break;
+                
+            case "min":
+                if (args.length < 3) {
+                    MessageUtils.sendErrorMessage(sender, "Usage: /shopadmin tax min <amount>");
+                    return true;
+                }
+                
+                try {
+                    double amount = Double.parseDouble(args[2]);
+                    if (amount < 0) {
+                        MessageUtils.sendErrorMessage(sender, "Minimum tax amount cannot be negative");
+                        return true;
+                    }
+                    
+                    plugin.getConfigManager().setMinimumTax(amount);
+                    plugin.getConfigManager().saveConfig();
+                    MessageUtils.sendSuccessMessage(sender, "Minimum tax amount set to " + amount);
+                } catch (NumberFormatException e) {
+                    MessageUtils.sendErrorMessage(sender, "Invalid number format");
+                }
+                break;
+                
+            case "max":
+                if (args.length < 3) {
+                    MessageUtils.sendErrorMessage(sender, "Usage: /shopadmin tax max <amount>");
+                    return true;
+                }
+                
+                try {
+                    double amount = Double.parseDouble(args[2]);
+                    if (amount < 0) {
+                        MessageUtils.sendErrorMessage(sender, "Maximum tax amount cannot be negative");
+                        return true;
+                    }
+                    
+                    plugin.getConfigManager().setMaximumTax(amount);
+                    plugin.getConfigManager().saveConfig();
+                    MessageUtils.sendSuccessMessage(sender, "Maximum tax amount set to " + (amount == 0 ? "no maximum" : amount));
+                } catch (NumberFormatException e) {
+                    MessageUtils.sendErrorMessage(sender, "Invalid number format");
+                }
+                break;
+                
+            default:
+                MessageUtils.sendErrorMessage(sender, "Unknown tax subcommand. Use /shopadmin tax help for help.");
+                break;
+        }
+        
         return true;
     }
 
     /**
-     * Handles the /shopadmin maintenance command
+     * Handle the maintenance command
+     *
+     * @param sender The command sender
+     * @param args The command arguments
+     * @return True if the command was handled
+     */
+    private boolean handleMaintenanceCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("frizzlenshop.admin.maintenance")) {
+            MessageUtils.sendErrorMessage(sender, "You don't have permission to use this command.");
+            return true;
+        }
+        
+        ConfigManager config = plugin.getConfigManager();
+        
+        if (args.length == 1) {
+            // Show current maintenance status
+            boolean maintenanceMode = config.isMaintenanceMode();
+            MessageUtils.sendMessage(sender, "&eMaintenance mode is currently " + 
+                (maintenanceMode ? "&cENABLED" : "&aOFF"));
+            MessageUtils.sendMessage(sender, "&eUse &f/shopadmin maintenance <on|off> &eto change");
+            return true;
+        }
+        
+        if (args.length < 2) {
+            MessageUtils.sendErrorMessage(sender, "Usage: /shopadmin maintenance <on|off>");
+            return true;
+        }
+        
+        String mode = args[1].toLowerCase();
+        
+        if (mode.equals("on") || mode.equals("enable") || mode.equals("true")) {
+            config.setMaintenanceMode(true);
+            config.saveConfig();
+            MessageUtils.sendSuccessMessage(sender, "Maintenance mode enabled. Only admins can access shops.");
+            
+            // Broadcast to all players
+            Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', 
+                "&c&l[SHOP] &cShop system is now in maintenance mode. Please finish your transactions."));
+        } else if (mode.equals("off") || mode.equals("disable") || mode.equals("false")) {
+            config.setMaintenanceMode(false);
+            config.saveConfig();
+            MessageUtils.sendSuccessMessage(sender, "Maintenance mode disabled. All players can access shops again.");
+            
+            // Broadcast to all players
+            Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', 
+                "&a&l[SHOP] &aShop system is now back online!"));
+        } else {
+            MessageUtils.sendErrorMessage(sender, "Invalid mode. Use 'on' or 'off'.");
+        }
+        
+        return true;
+    }
+
+    /**
+     * Handles the /shopadmin populate command
+     * Populates an admin shop with predefined items
      *
      * @param sender The command sender
      * @param args   The command arguments
      * @return True if the command was handled, false otherwise
      */
-    private boolean handleMaintenanceCommand(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("frizzlenshop.admin.maintenance")) {
-            MessageUtils.sendErrorMessage(sender, "You don't have permission to use maintenance mode.");
+    private boolean handlePopulateCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("frizzlenshop.admin.populate")) {
+            MessageUtils.sendErrorMessage(sender, "You don't have permission to populate admin shops.");
+            return true;
+        }
+
+        if (!(sender instanceof Player)) {
+            MessageUtils.sendErrorMessage(sender, "This command can only be used by players.");
+            return true;
+        }
+
+        if (args.length < 3) {
+            MessageUtils.sendErrorMessage(sender, "Usage: /shopadmin populate <shop-id> <category>");
+            MessageUtils.sendMessage(sender, "Available categories: tools, weapons, armor, food, blocks, redstone, potions");
+            return true;
+        }
+
+        try {
+            UUID shopId = UUID.fromString(args[1]);
+            String category = args[2].toLowerCase();
+            
+            // Get the shop
+            Shop shop = plugin.getShopManager().getShop(shopId);
+            if (shop == null) {
+                MessageUtils.sendErrorMessage(sender, "Shop not found with ID: " + shopId);
+                return true;
+            }
+            
+            // Check if it's an admin shop
+            if (!shop.isAdminShop()) {
+                MessageUtils.sendErrorMessage(sender, "This command can only be used with admin shops.");
+                return true;
+            }
+            
+            // Cast to AdminShop to use our new methods
+            AdminShop adminShop = (AdminShop) shop;
+            
+            // Get currency (optional argument)
+            String currency = args.length > 3 ? args[3] : plugin.getEconomyManager().getDefaultCurrency();
+            
+            // Populate the shop with items from the specified category
+            int added = adminShop.addCategoryItems(category, currency);
+            
+            if (added > 0) {
+                MessageUtils.sendSuccessMessage(sender, "Added " + added + " items to the shop from category: " + category);
+            } else {
+                MessageUtils.sendErrorMessage(sender, "No items were added. Invalid category or all items already exist.");
+            }
+            
+        } catch (IllegalArgumentException e) {
+            MessageUtils.sendErrorMessage(sender, "Invalid shop ID. Please use a valid UUID.");
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Handles the /shopadmin template command
+     * Saves or loads shop templates
+     *
+     * @param sender The command sender
+     * @param args   The command arguments
+     * @return True if the command was handled, false otherwise
+     */
+    private boolean handleTemplateCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("frizzlenshop.admin.template")) {
+            MessageUtils.sendErrorMessage(sender, "You don't have permission to use shop templates.");
             return true;
         }
 
         if (args.length < 2) {
-            boolean currentMode = plugin.getConfigManager().isMaintenanceMode();
-            MessageUtils.sendMessage(sender, "&eMaintenance mode is currently " + (currentMode ? "&aENABLED" : "&cDISABLED"));
+            MessageUtils.sendErrorMessage(sender, "Usage: /shopadmin template <save|load> [template-name] [shop-id]");
             return true;
         }
 
-        String mode = args[1].toLowerCase();
-        boolean enable = mode.equals("on") || mode.equals("true") || mode.equals("enable");
+        String action = args[1].toLowerCase();
+        
+        if (action.equals("save")) {
+            if (args.length < 4) {
+                MessageUtils.sendErrorMessage(sender, "Usage: /shopadmin template save <template-name> <shop-id>");
+                return true;
+            }
+            
+            String templateName = args[2];
+            try {
+                UUID shopId = UUID.fromString(args[3]);
+                
+                // Get the shop
+                Shop shop = plugin.getShopManager().getShop(shopId);
+                if (shop == null) {
+                    MessageUtils.sendErrorMessage(sender, "Shop not found with ID: " + shopId);
+                    return true;
+                }
+                
+                // For now, just acknowledge the command
+                // In a real implementation, you'd save the shop items to a template file/database
+                MessageUtils.sendMessage(sender, "Shop template saving functionality is still in development.");
+                
+            } catch (IllegalArgumentException e) {
+                MessageUtils.sendErrorMessage(sender, "Invalid shop ID. Please use a valid UUID.");
+            }
+            
+        } else if (action.equals("load")) {
+            if (args.length < 4) {
+                MessageUtils.sendErrorMessage(sender, "Usage: /shopadmin template load <template-name> <shop-id>");
+                return true;
+            }
+            
+            String templateName = args[2];
+            try {
+                UUID shopId = UUID.fromString(args[3]);
+                
+                // Get the shop
+                Shop shop = plugin.getShopManager().getShop(shopId);
+                if (shop == null) {
+                    MessageUtils.sendErrorMessage(sender, "Shop not found with ID: " + shopId);
+                    return true;
+                }
+                
+                // For now, just acknowledge the command
+                // In a real implementation, you'd load items from a template
+                MessageUtils.sendMessage(sender, "Shop template loading functionality is still in development.");
+                
+            } catch (IllegalArgumentException e) {
+                MessageUtils.sendErrorMessage(sender, "Invalid shop ID. Please use a valid UUID.");
+            }
+            
+        } else {
+            MessageUtils.sendErrorMessage(sender, "Invalid action. Use 'save' or 'load'.");
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Handles the /shopadmin globalshop command
+     * Creates a global admin shop that can be accessed from anywhere
+     *
+     * @param sender The command sender
+     * @param args   The command arguments
+     * @return True if the command was handled, false otherwise
+     */
+    private boolean handleGlobalShopCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("frizzlenshop.admin.globalshop")) {
+            MessageUtils.sendErrorMessage(sender, "You don't have permission to manage global shops.");
+            return true;
+        }
 
-        // This would enable/disable maintenance mode
-        // For now, just provide basic feedback
-        MessageUtils.sendMessage(sender, "&eChanging maintenance mode is not fully implemented yet.");
+        if (args.length < 2) {
+            MessageUtils.sendErrorMessage(sender, "Usage: /shopadmin globalshop <create|remove|list> [name]");
+            return true;
+        }
+
+        String action = args[1].toLowerCase();
+        
+        if (action.equals("create")) {
+            if (args.length < 3) {
+                MessageUtils.sendErrorMessage(sender, "Usage: /shopadmin globalshop create <name>");
+                return true;
+            }
+            
+            String name = args[2];
+            
+            // For now, just create a regular admin shop at the player's location
+            if (sender instanceof Player) {
+                Player player = (Player) sender;
+                Location location = player.getLocation();
+                
+                // Create the admin shop
+                AdminShop shop = plugin.getShopManager().createAdminShop(name, location);
+                if (shop == null) {
+                    MessageUtils.sendErrorMessage(player, "Failed to create a global shop.");
+                    return true;
+                }
+                
+                MessageUtils.sendSuccessMessage(player, "Global shop '" + name + "' created successfully!");
+                MessageUtils.sendMessage(player, "Shop ID: " + shop.getId());
+                
+                // For a real global shop implementation, you'd need to store this in a special registry
+                // and add a command to access it from anywhere
+                MessageUtils.sendMessage(player, "Note: True global shops that can be accessed from anywhere are still in development.");
+            } else {
+                MessageUtils.sendErrorMessage(sender, "This command can only be used by players.");
+            }
+            
+        } else if (action.equals("remove")) {
+            if (args.length < 3) {
+                MessageUtils.sendErrorMessage(sender, "Usage: /shopadmin globalshop remove <shop-id>");
+                return true;
+            }
+            
+            try {
+                UUID shopId = UUID.fromString(args[2]);
+                
+                // Get the shop
+                Shop shop = plugin.getShopManager().getShop(shopId);
+                if (shop == null) {
+                    MessageUtils.sendErrorMessage(sender, "Shop not found with ID: " + shopId);
+                    return true;
+                }
+                
+                // Delete the shop
+                if (plugin.getShopManager().deleteShop(shopId)) {
+                    MessageUtils.sendSuccessMessage(sender, "Global shop '" + shop.getName() + "' removed successfully!");
+                } else {
+                    MessageUtils.sendErrorMessage(sender, "Failed to remove the global shop.");
+                }
+                
+            } catch (IllegalArgumentException e) {
+                MessageUtils.sendErrorMessage(sender, "Invalid shop ID. Please use a valid UUID.");
+            }
+            
+        } else if (action.equals("list")) {
+            // List all admin shops (in a real implementation, you'd only list global shops)
+            Collection<Shop> adminShops = plugin.getShopManager().getAdminShops();
+            
+            if (adminShops.isEmpty()) {
+                MessageUtils.sendMessage(sender, "No admin shops found.");
+            } else {
+                MessageUtils.sendMessage(sender, "&e===== Admin Shops =====");
+                for (Shop shop : adminShops) {
+                    MessageUtils.sendMessage(sender, "&7ID: &f" + shop.getId() + " &7| Name: &f" + shop.getName());
+                }
+            }
+            
+        } else {
+            MessageUtils.sendErrorMessage(sender, "Invalid action. Use 'create', 'remove', or 'list'.");
+        }
+        
         return true;
     }
 
@@ -619,35 +1108,147 @@ public class ShopAdminCommand implements CommandExecutor, TabCompleter {
         MessageUtils.sendMessage(sender, "&7/shopadmin logs <player> [timeframe] &f- View transaction logs");
         MessageUtils.sendMessage(sender, "&7/shopadmin tax <rate> &f- Set global tax rate");
         MessageUtils.sendMessage(sender, "&7/shopadmin maintenance <on|off> &f- Toggle maintenance mode");
+        MessageUtils.sendMessage(sender, "&7/shopadmin populate <shop-id> <category> &f- Add items from a category");
+        MessageUtils.sendMessage(sender, "&7/shopadmin template <save|load> <name> <shop-id> &f- Manage shop templates");
+        MessageUtils.sendMessage(sender, "&7/shopadmin globalshop <create|remove|list> [name] &f- Manage global shops");
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        List<String> completions = new ArrayList<>();
-        
-        if (!sender.hasPermission("frizzlenshop.admin")) {
-            return completions;
-        }
-        
         if (args.length == 1) {
-            // Sub-command completion
             return subCommands.stream()
-                    .filter(subCmd -> subCmd.startsWith(args[0].toLowerCase()))
+                    .filter(s -> s.startsWith(args[0].toLowerCase()))
                     .collect(Collectors.toList());
         } else if (args.length == 2) {
-            // Second argument completion
             String subCommand = args[0].toLowerCase();
             
-            if (subCommand.equals("maintenance")) {
-                // Complete on/off
-                List<String> options = Arrays.asList("on", "off");
-                
-                return options.stream()
-                        .filter(option -> option.startsWith(args[1].toLowerCase()))
+            if (subCommand.equals("populate")) {
+                return Arrays.asList("tools", "weapons", "armor", "food", "blocks", "redstone", "potions").stream()
+                        .filter(s -> s.startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+            } else if (subCommand.equals("template")) {
+                return Arrays.asList("save", "load").stream()
+                        .filter(s -> s.startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+            } else if (subCommand.equals("globalshop")) {
+                return Arrays.asList("create", "remove", "list").stream()
+                        .filter(s -> s.startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+            } else if (subCommand.equals("maintenance")) {
+                return Arrays.asList("on", "off").stream()
+                        .filter(s -> s.startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
             }
         }
         
-        return completions;
+        return new ArrayList<>();
+    }
+
+    /**
+     * Handle the shop command
+     *
+     * @param sender The command sender
+     * @param args The command arguments
+     * @return True if the command was handled
+     */
+    private boolean handleShopCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("frizzlenshop.admin.shop")) {
+            MessageUtils.sendErrorMessage(sender, "You don't have permission to use this command.");
+            return true;
+        }
+        
+        if (!(sender instanceof Player)) {
+            MessageUtils.sendErrorMessage(sender, "This command can only be used by players.");
+            return true;
+        }
+        
+        Player player = (Player) sender;
+        
+        if (args.length == 1) {
+            // Open shop admin menu
+            plugin.getGuiManager().openShopAdminMenu(player);
+            return true;
+        }
+        
+        // Handle subcommands
+        String subCommand = args[1].toLowerCase();
+        
+        switch (subCommand) {
+            case "help":
+                MessageUtils.sendMessage(player, "&e===== Shop Admin Commands =====");
+                MessageUtils.sendMessage(player, "&7/shopadmin shop &f- Open shop admin menu");
+                MessageUtils.sendMessage(player, "&7/shopadmin shop create <name> &f- Create a new admin shop");
+                MessageUtils.sendMessage(player, "&7/shopadmin shop list &f- List all admin shops");
+                MessageUtils.sendMessage(player, "&7/shopadmin shop delete <id> &f- Delete an admin shop");
+                break;
+                
+            case "create":
+                if (args.length < 3) {
+                    MessageUtils.sendErrorMessage(player, "Usage: /shopadmin shop create <name>");
+                    return true;
+                }
+                
+                String shopName = args[2];
+                
+                // Create a new admin shop at the player's location
+                Location location = player.getLocation();
+                AdminShop shop = plugin.getShopManager().createAdminShop(shopName, location);
+                
+                if (shop != null) {
+                    MessageUtils.sendSuccessMessage(player, "Admin shop created: " + shopName);
+                    MessageUtils.sendMessage(player, "&eUse the GUI to manage this shop.");
+                } else {
+                    MessageUtils.sendErrorMessage(player, "Failed to create admin shop. Check if there's already a shop at this location.");
+                }
+                break;
+                
+            case "list":
+                List<Shop> adminShops = new ArrayList<>(plugin.getShopManager().getAdminShops());
+                
+                if (adminShops.isEmpty()) {
+                    MessageUtils.sendMessage(player, "&eNo admin shops found.");
+                    return true;
+                }
+                
+                MessageUtils.sendMessage(player, "&e===== Admin Shops =====");
+                for (Shop adminShop : adminShops) {
+                    MessageUtils.sendMessage(player, "&7ID: &f" + adminShop.getId());
+                    MessageUtils.sendMessage(player, "&7Name: &f" + adminShop.getName());
+                    MessageUtils.sendMessage(player, "&7Location: &f" + formatLocation(adminShop.getLocation()));
+                    MessageUtils.sendMessage(player, "&7Items: &f" + adminShop.getItems().size());
+                    MessageUtils.sendMessage(player, "");
+                }
+                break;
+                
+            case "delete":
+                if (args.length < 3) {
+                    MessageUtils.sendErrorMessage(player, "Usage: /shopadmin shop delete <id>");
+                    return true;
+                }
+                
+                try {
+                    UUID shopId = UUID.fromString(args[2]);
+                    boolean success = plugin.getShopManager().deleteShop(shopId);
+                    
+                    if (success) {
+                        MessageUtils.sendSuccessMessage(player, "Shop deleted successfully.");
+                    } else {
+                        MessageUtils.sendErrorMessage(player, "Failed to delete shop. Check if the ID is correct.");
+                    }
+                } catch (IllegalArgumentException e) {
+                    MessageUtils.sendErrorMessage(player, "Invalid shop ID format.");
+                }
+                break;
+                
+            default:
+                MessageUtils.sendErrorMessage(player, "Unknown shop subcommand. Use /shopadmin shop help for help.");
+                break;
+        }
+        
+        return true;
+    }
+
+    private String formatLocation(Location location) {
+        return location.getWorld().getName() + " " + location.getBlockX() + ", " + location.getBlockY() + ", " + location.getBlockZ();
     }
 } 

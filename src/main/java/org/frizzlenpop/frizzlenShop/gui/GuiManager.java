@@ -188,6 +188,36 @@ public class GuiManager {
     }
     
     /**
+     * Open shop statistics menu
+     *
+     * @param player The player to open the menu for
+     */
+    public void openShopStatisticsMenu(Player player) {
+        // Use the ShopAdminMenuHandler to handle the shop statistics menu
+        ShopAdminMenuHandler.openStatisticsMenu(this, plugin, player);
+    }
+    
+    /**
+     * Open price management menu
+     *
+     * @param player The player to open the menu for
+     */
+    public void openPriceManagementMenu(Player player) {
+        // Use the ShopAdminMenuHandler to handle the price management menu
+        ShopAdminMenuHandler.openPriceManagementMenu(this, plugin, player);
+    }
+    
+    /**
+     * Open tax management menu
+     *
+     * @param player The player to open the menu for
+     */
+    public void openTaxManagementMenu(Player player) {
+        // Use the ShopAdminMenuHandler to handle the tax management menu
+        ShopAdminMenuHandler.openTaxManagementMenu(this, plugin, player);
+    }
+    
+    /**
      * Open shop management menu
      *
      * @param player The player to open the menu for
@@ -270,6 +300,18 @@ public class GuiManager {
                 
             case SHOP_ITEMS:
                 return ShopItemsMenuHandler.handleClick(this, plugin, player, slot, data);
+                
+            case ADMIN_BULK_ITEM_MANAGEMENT:
+                return ShopAdminMenuHandler.handleBulkItemManagementClick(this, plugin, player, slot);
+                
+            case PRICE_MANAGEMENT:
+                return ShopAdminMenuHandler.handlePriceManagementClick(this, plugin, player, slot, clickType);
+                
+            case TAX_MANAGEMENT:
+                return ShopAdminMenuHandler.handleTaxManagementClick(this, plugin, player, slot, clickType);
+                
+            case SHOP_STATISTICS:
+                return ShopAdminMenuHandler.handleStatisticsMenuClick(this, plugin, player, slot, clickType);
                 
             default:
                 return false;
