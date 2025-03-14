@@ -25,6 +25,11 @@ public enum MenuType {
     MY_SHOPS_MENU,
     
     /**
+     * The admin shops menu
+     */
+    ADMIN_SHOPS_MENU,
+    
+    /**
      * The create shop menu
      */
     CREATE_SHOP_MENU,
@@ -92,5 +97,45 @@ public enum MenuType {
     /**
      * The crafting opportunities menu
      */
-    CRAFTING_OPPORTUNITIES
+    CRAFTING_OPPORTUNITIES,
+    
+    /**
+     * The template management menu
+     */
+    TEMPLATE_MANAGEMENT,
+    
+    /**
+     * The template creation menu
+     */
+    TEMPLATE_CREATION,
+    
+    /**
+     * The template items menu
+     */
+    TEMPLATE_ITEMS,
+    
+    /**
+     * The template categories menu
+     */
+    TEMPLATE_CATEGORIES,
+    
+    /**
+     * The shop backup menu
+     */
+    SHOP_BACKUP,
+    
+    /**
+     * The shop restore menu
+     */
+    SHOP_RESTORE,
+    
+    /**
+     * The shop settings menu
+     */
+    SHOP_SETTINGS,
+    
+    /**
+     * The quick sell menu
+     */
+    QUICK_SELL_MENU
 } 

@@ -1,5 +1,6 @@
 package org.frizzlenpop.frizzlenShop.shops;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -309,4 +310,81 @@ public interface Shop {
      * @param open True to open the shop, false to close it
      */
     void setOpen(boolean open);
+
+    /**
+     * Get the shop owner's name
+     * 
+     * @return The owner's name, or "Server" for admin shops
+     */
+    String getOwnerName();
+    
+    /**
+     * Check if the shop is public
+     * 
+     * @return True if the shop is public, false if private
+     */
+    boolean isPublic();
+    
+    /**
+     * Set whether the shop is public
+     * 
+     * @param isPublic True to make the shop public, false for private
+     */
+    void setPublic(boolean isPublic);
+    
+    /**
+     * Get the shop theme/design
+     * 
+     * @return The shop theme
+     */
+    String getTheme();
+    
+    /**
+     * Set the shop theme/design
+     * 
+     * @param theme The new theme
+     */
+    void setTheme(String theme);
+    
+    /**
+     * Check if notifications are enabled for this shop
+     * 
+     * @return True if notifications are enabled
+     */
+    boolean areNotificationsEnabled();
+    
+    /**
+     * Set whether notifications are enabled for this shop
+     * 
+     * @param enabled True to enable notifications, false to disable
+     */
+    void setNotificationsEnabled(boolean enabled);
+    
+    /**
+     * Get the shop tier (for admin shops)
+     * 
+     * @return The shop tier (1-3)
+     */
+    int getTier();
+    
+    /**
+     * Set the shop tier (for admin shops)
+     * 
+     * @param tier The new tier (1-3)
+     */
+    void setTier(int tier);
+    
+    /**
+     * Get the shop category
+     * 
+     * @return The shop category
+     */
+    String getCategory();
+    
+    /**
+     * Set the shop category
+     * 
+     * @param category The new category
+     */
+    void setCategory(String category);
 } 

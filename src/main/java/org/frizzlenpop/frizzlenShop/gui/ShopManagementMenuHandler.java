@@ -142,8 +142,8 @@ public class ShopManagementMenuHandler {
                 return true;
                 
             case 22: // Shop Settings
-                // TODO: Implement settings menu
-                MessageUtils.sendMessage(player, "&eShop settings would open here");
+                // Open shop settings menu
+                ShopSettingsMenuHandler.openShopSettingsMenu(guiManager, plugin, player, shop);
                 return true;
                 
             case 25: // Shop Statistics

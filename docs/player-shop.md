@@ -8,17 +8,27 @@ The Player Shop system allows players to create and manage their own shops on yo
 
 Player shops in FrizzlenShop enable players to sell their items to other players, creating a dynamic marketplace beyond the server's admin shops. These shops have limited stock (unlike admin shops) and are physically located in the world.
 
-## Creating a Player Shop
+## Creating a Shop
 
-### Basic Creation
+There are two ways to create a player shop:
 
-Players can create a shop with the following command:
+### Method 1: Command Creation
 
-```
-/fs shop create <name>
-```
+1. Run the command `/fs shop create <name>`
+2. Follow the interactive creation process to set up your shop
+3. Add items to your shop inventory
 
-This creates a shop at the player's current location.
+### Method 2: Using a Template
+
+For quick shop setup, you can use templates:
+
+1. Access the templates menu via `/fs template` or from the main menu
+2. Browse available templates by category or creator
+3. Select a template that matches your needs
+4. Click "Use Template" and follow the prompts
+5. Your shop will be created with all the items and settings from the template
+
+Using templates is the fastest way to set up a fully stocked shop with optimal pricing.
 
 ### Shop Customization
 

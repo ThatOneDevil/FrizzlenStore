@@ -15,7 +15,7 @@ import java.util.Map;
 public class ShopItem {
 
     private final UUID id;
-    private final UUID shopId;
+    private UUID shopId;
     private final ItemStack item;
     private double buyPrice;
     private double sellPrice;
@@ -108,6 +108,16 @@ public class ShopItem {
      */
     public UUID getShopId() {
         return shopId;
+    }
+
+    /**
+     * Set the shop ID this item belongs to
+     * This should only be called when adding the item to a shop
+     * 
+     * @param shopId The shop ID
+     */
+    public void setShopId(UUID shopId) {
+        this.shopId = shopId;
     }
 
     /**

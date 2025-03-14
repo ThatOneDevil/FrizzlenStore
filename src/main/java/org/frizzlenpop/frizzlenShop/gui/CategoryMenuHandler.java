@@ -96,15 +96,15 @@ public class CategoryMenuHandler {
         // Fill empty slots
         guiManager.fillEmptySlots(inventory);
 
+        // Store menu data
+        MenuData menuData = new MenuData(MenuType.CATEGORY_MENU);
+        menuData.setData("category", category);
+        menuData.setData("page", page);
+        menuData.setData("totalPages", totalPages);
+        guiManager.updateMenuData(player.getUniqueId(), menuData);
+        
         // Open inventory
         player.openInventory(inventory);
-
-        // Store menu data
-        Map<String, Object> data = new HashMap<>();
-        data.put("category", category);
-        data.put("page", page);
-        data.put("totalPages", totalPages);
-        guiManager.menuData.put(player.getUniqueId(), new MenuData(MenuType.CATEGORY_MENU, data));
     }
 
     /**
@@ -129,7 +129,7 @@ public class CategoryMenuHandler {
 
         // Back button
         if (slot == 45) {
-            guiManager.openMainMenu(player);
+            guiManager.returnToPreviousMenu(player);
             return true;
         }
 
@@ -158,6 +158,13 @@ public class CategoryMenuHandler {
             if (actualIndex >= 0 && actualIndex < categoryItems.size()) {
                 // Get the item data
                 ShopItemData itemData = categoryItems.get(actualIndex);
+                
+                // Store the current category and page for returning from item details
+                MenuData currentData = guiManager.getMenuData(player.getUniqueId());
+                if (currentData != null) {
+                    currentData.setData("previous_category", category);
+                    currentData.setData("previous_page", page);
+                }
 
                 // Open the item details menu
                 guiManager.openItemDetailsMenu(player, itemData);
@@ -193,10 +200,10 @@ public class CategoryMenuHandler {
 
                 boolean inCategory;
 
-
                 CreativeCategory creativeCategory = material.getCreativeCategory();
-                Bukkit.broadcastMessage(category);
-                Bukkit.broadcastMessage(creativeCategory.name());
+                // Remove the debug messages that are printing to chat
+                // Bukkit.broadcastMessage(category);
+                // Bukkit.broadcastMessage(creativeCategory.name());
 
                 if (category.equalsIgnoreCase("all")) {
                     inCategory = true;

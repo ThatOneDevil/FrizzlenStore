@@ -115,6 +115,37 @@ Market Analysis integrates closely with:
 - **[Admin Shop System](admin-shop.md)**: Records and analyzes admin shop transactions
 - **[Player Shop System](player-shop.md)**: Records and analyzes player shop transactions
 - **[Crafting System](crafting.md)**: Analyzes crafting relationships and profit margins
+- **[Shop Templates](templates.md)**: Uses market data to create optimized templates
+
+## Templates and Market Analysis
+
+The Market Analysis system integrates with the Shop Templates feature to provide data-driven template creation and management:
+
+### Market-Optimized Templates
+
+Administrators can create market-optimized templates based on current market analysis:
+
+1. **Trending Items Templates**: Automatically create templates containing items with rising prices
+2. **High-Demand Templates**: Generate templates with the most frequently purchased items
+3. **Profitable Items Templates**: Create templates with items that have the highest profit margins
+
+### Template Analysis Reports
+
+The system can generate analysis reports for existing templates:
+
+1. **Profitability Analysis**: Evaluate the overall profitability of items in a template
+2. **Market Alignment**: Compare template prices with current market prices
+3. **Trend Prediction**: Predict how template items might perform in the future
+
+### Template Recommendations
+
+The Market Analyzer provides recommendations for template management:
+
+1. **Template Updates**: Suggests when templates should be updated based on market shifts
+2. **Item Recommendations**: Suggests items to add or remove from templates
+3. **Price Adjustments**: Recommends price adjustments for template items
+
+To access these features, use the Template Management menu via `/fs admin template manage` and select the "Market Analysis" option.
 
 ## Configuration
 

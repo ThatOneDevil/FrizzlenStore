@@ -127,11 +127,12 @@ public class ShopAdminMenuHandler {
         // Fill empty slots
         guiManager.fillEmptySlots(inventory);
         
+        // Store menu data
+        MenuData menuData = new MenuData(MenuType.SHOP_ADMIN_MENU);
+        guiManager.updateMenuData(player.getUniqueId(), menuData);
+        
         // Open inventory
         player.openInventory(inventory);
-        
-        // Store menu data
-        guiManager.menuData.put(player.getUniqueId(), new MenuData(MenuType.SHOP_ADMIN_MENU));
     }
     
     /**
@@ -822,7 +823,7 @@ public class ShopAdminMenuHandler {
                 return true;
                 
             case 31: // Back button
-                guiManager.openShopAdminMenu(player);
+                guiManager.returnToPreviousMenu(player);
                 return true;
                 
             default:
@@ -978,7 +979,7 @@ public class ShopAdminMenuHandler {
                 return true;
                 
             case 31: // Back button
-                guiManager.openShopAdminMenu(player);
+                guiManager.returnToPreviousMenu(player);
                 return true;
                 
             default:

@@ -144,4 +144,29 @@ integrations:
   # Whether to hook into PAPI for placeholders
   placeholderapi: true
   # Whether to use Vault for economy
-  vault: true 
+  vault: true
+
+# Dynamic Pricing Settings
+dynamic_pricing:
+  # Enable or disable dynamic pricing
+  enabled: true
+  
+  # How quickly prices change (higher = more volatile)
+  volatility_multiplier: 1.0
+  
+  # How often to perform market analysis (in minutes)
+  analysis_interval: 60
+  
+  # Maximum price change allowed (as a percentage of base price)
+  max_price_change: 0.5
+  
+  # How quickly prices normalize when no activity (higher = faster)
+  normalization_rate: 0.1
+  
+  # Whether crafting relationships affect pricing
+  use_crafting_relationships: true
+  
+  # Price fluctuation settings
+  fluctuation:
+    enabled: true
+    magnitude: 0.05 

@@ -348,16 +348,35 @@ public class ShopManager {
     }
 
     /**
-     * Add a shop to the manager
+     * Register a shop with a specific ID (for loading from storage)
      *
-     * @param shop The shop to add
+     * @param shop The shop to register
+     * @return True if successful, false if already exists
      */
-    public void addShop(Shop shop) {
+    public boolean registerShop(Shop shop) {
+        if (shop == null || shops.containsKey(shop.getId())) {
+            return false;
+        }
+        
         shops.put(shop.getId(), shop);
         
+        // If it's a player shop, add it to the player's shops list
         if (!shop.isAdminShop() && shop.getOwner() != null) {
             playerShops.computeIfAbsent(shop.getOwner(), k -> new ArrayList<>()).add(shop.getId());
         }
+        
+        return true;
+    }
+    
+    /**
+     * Add a shop (backwards compatibility method)
+     *
+     * @param shop The shop to add
+     * @return True if successfully added, false otherwise
+     */
+    public boolean addShop(Shop shop) {
+        // Forward to registerShop for proper registration
+        return registerShop(shop);
     }
 
     /**
@@ -539,26 +558,5 @@ public class ShopManager {
     public double getDefaultSellPrice(ItemStack item) {
         // Sell price is typically lower than buy price
         return getDefaultBuyPrice(item) * 0.8;
-    }
-
-    /**
-     * Register a shop with the shop manager
-     *
-     * @param shop The shop to register
-     * @return True if the shop was registered successfully, false otherwise
-     */
-    public boolean registerShop(Shop shop) {
-        if (shop == null || shops.containsKey(shop.getId())) {
-            return false;
-        }
-        
-        shops.put(shop.getId(), shop);
-        
-        // If it's a player shop, add it to the player's shops list
-        if (!shop.isAdminShop() && shop.getOwner() != null) {
-            playerShops.computeIfAbsent(shop.getOwner(), k -> new ArrayList<>()).add(shop.getId());
-        }
-        
-        return true;
     }
 } 

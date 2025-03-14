@@ -1,10 +1,13 @@
 package org.frizzlenpop.frizzlenShop.economy;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.frizzlenpop.frizzlenShop.FrizzlenShop;
+import org.frizzlenpop.frizzlenShop.shops.AdminShop;
+import org.frizzlenpop.frizzlenShop.shops.Shop;
 import org.frizzlenpop.frizzlenShop.shops.ShopItem;
 import org.frizzlenpop.frizzlenShop.utils.MessageUtils;
 
@@ -75,6 +78,9 @@ public class DynamicPricingManager {
                     // Clear price caches after analysis
                     dynamicBuyPriceCache.clear();
                     dynamicSellPriceCache.clear();
+                    
+                    // Apply dynamic prices to admin shop base prices
+                    updateAdminShopPrices();
                 }
             }
         }.runTaskTimerAsynchronously(plugin, 20 * 60 * 60, 20 * 60 * 60 * 24); // Start after 1 hour, run daily
@@ -86,6 +92,16 @@ public class DynamicPricingManager {
                 cleanupPriceCache();
             }
         }.runTaskTimerAsynchronously(plugin, 20 * 60 * 10, 20 * 60 * 10); // Run every 10 minutes
+        
+        // Update admin shop prices hourly to reflect market changes
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (isEnabled && marketAnalyzer != null) {
+                    updateAdminShopPrices();
+                }
+            }
+        }.runTaskTimerAsynchronously(plugin, 20 * 60 * 30, 20 * 60 * 60); // Start after 30 minutes, run hourly
     }
     
     /**
@@ -260,5 +276,80 @@ public class DynamicPricingManager {
      */
     public boolean isEnabled() {
         return isEnabled;
+    }
+    
+    /**
+     * Updates the base prices of admin shop items based on dynamic pricing calculations
+     * This ensures that admin shop prices reflect market trends over time
+     */
+    public void updateAdminShopPrices() {
+        if (!isEnabled || marketAnalyzer == null) {
+            return;
+        }
+        
+        plugin.getLogger().info("Updating admin shop prices based on dynamic pricing...");
+        
+        // Use the main thread to update shops
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            int updatedCount = 0;
+            double totalPriceChange = 0;
+            
+            // Get all admin shops
+            for (Shop shop : plugin.getShopManager().getAdminShops()) {
+                if (!(shop instanceof AdminShop)) {
+                    continue;
+                }
+                
+                AdminShop adminShop = (AdminShop) shop;
+                
+                // Update each item in the shop
+                for (ShopItem item : adminShop.getItems()) {
+                    // Ensure the shop ID is set (fix for NULL in database saves)
+                    if (item.getShopId() == null) {
+                        item.setShopId(shop.getId());
+                    }
+                    
+                    // Get current base prices
+                    double oldBuyPrice = item.getBuyPrice();
+                    double oldSellPrice = item.getSellPrice();
+                    
+                    // Calculate dynamic prices
+                    double newBuyPrice = calculateDynamicBuyPrice(item, oldBuyPrice);
+                    double newSellPrice = calculateDynamicSellPrice(item, oldSellPrice);
+                    
+                    // Calculate the percentage change
+                    double buyPriceChange = Math.abs((newBuyPrice - oldBuyPrice) / oldBuyPrice);
+                    
+                    // Only update if there's a significant change (>1%)
+                    if (buyPriceChange > 0.01) {
+                        // Update the base prices
+                        item.setBuyPrice(newBuyPrice);
+                        item.setSellPrice(newSellPrice);
+                        
+                        try {
+                            // Save the item to the database
+                            plugin.getDatabaseManager().saveShopItem(item);
+                            
+                            updatedCount++;
+                            totalPriceChange += buyPriceChange;
+                        } catch (Exception e) {
+                            plugin.getLogger().warning("Failed to save shop item to database: " + e.getMessage());
+                        }
+                    }
+                }
+            }
+            
+            // Calculate the average price change percentage
+            double avgPriceChange = updatedCount > 0 ? (totalPriceChange / updatedCount) * 100 : 0;
+            
+            plugin.getLogger().info("Updated " + updatedCount + " admin shop items with an average price change of " 
+                + String.format("%.2f", avgPriceChange) + "%");
+            
+            // Clear market trends after price update
+            if (marketAnalyzer != null && updatedCount > 0) {
+                marketAnalyzer.clearTrendData();
+                plugin.getLogger().info("Market trends cleared after price update");
+            }
+        });
     }
 } 

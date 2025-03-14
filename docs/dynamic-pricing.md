@@ -155,6 +155,35 @@ Dynamic pricing integrates with:
 - **[Admin Shop System](admin-shop.md)**: Provides base prices and shop infrastructure
 - **[Market Analysis](market-analysis.md)**: Uses and feeds data to the market analyzer
 - **[Crafting System](crafting.md)**: Considers crafting relationships in pricing
+- **[Shop Templates](templates.md)**: Captures and preserves price points in templates
+
+## Templates and Dynamic Pricing
+
+The dynamic pricing system integrates with the Shop Templates feature in several ways:
+
+### Template Price Snapshots
+
+When creating a template, the current dynamic prices are saved as a snapshot within the template. This provides several benefits:
+
+1. **Historical Price Reference**: Templates act as historical records of prices at specific points in time
+2. **Market Comparison**: Compare current market prices with template snapshots to identify trends
+3. **Consistent Deployment**: Deploy shops with consistent pricing regardless of current market conditions
+
+### Price Adaptation Options
+
+When deploying a shop from a template, administrators have several options for handling prices:
+
+1. **Use Template Prices**: Apply the exact prices captured in the template
+2. **Use Current Market Prices**: Override template prices with current dynamic prices
+3. **Blend Prices**: Apply a weighted average between template and current prices
+
+### Market-Aware Templates
+
+The template system includes "market-aware" templates that can:
+
+1. **Auto-Update**: Automatically update their prices based on current market conditions
+2. **Track Volatility**: Track which items have stable vs. volatile prices
+3. **Adaptive Pricing**: Adjust template buy/sell margins based on price volatility
 
 ## Developer API
 

@@ -82,8 +82,8 @@ public class ItemDetailsMenuHandler {
         inventory.setItem(30, sellItem);
         
         // Back button
-        ItemStack backItem = guiManager.createGuiItem(Material.ARROW, "&7&lBack", 
-                Collections.singletonList("&7Return to category menu"));
+        ItemStack backItem = guiManager.createGuiItem(Material.ARROW, "&c&lBack", 
+                Collections.singletonList("&7Return to previous menu"));
         inventory.setItem(31, backItem);
         
         // Place the display item in the center of the top row
@@ -96,7 +96,22 @@ public class ItemDetailsMenuHandler {
         player.openInventory(inventory);
         
         // Store menu data
-        guiManager.menuData.put(player.getUniqueId(), new MenuData(MenuType.ITEM_DETAILS_MENU, shopItemData));
+        MenuData newMenuData = new MenuData(MenuType.ITEM_DETAILS_MENU, shopItemData);
+        
+        // Try to preserve previous category and page information
+        MenuData currentData = guiManager.getMenuData(player.getUniqueId());
+        if (currentData != null) {
+            String previousCategory = currentData.getString("previous_category");
+            int previousPage = currentData.getInt("previous_page");
+            
+            if (previousCategory != null) {
+                newMenuData.setData("previous_category", previousCategory);
+                newMenuData.setData("previous_page", previousPage);
+            }
+        }
+        
+        // Use updateMenuData to properly preserve the previous menu type
+        guiManager.updateMenuData(player.getUniqueId(), newMenuData);
     }
     
     /**
@@ -152,8 +167,17 @@ public class ItemDetailsMenuHandler {
                     MessageUtils.sendSuccessMessage(player, "You bought " + amount + "x " + getItemName(shopItemData.getItem()) + 
                             " for " + plugin.getEconomyManager().formatCurrency(price, shopItemData.getCurrency()));
                     
+                    // Store the current menu data's previousMenuType
+                    MenuType previousType = menuData.getPreviousMenuType();
+                    
                     // Update the menu
                     openItemDetailsMenu(guiManager, plugin, player, shopItemData);
+                    
+                    // Re-apply the previous menu type to ensure we can navigate back correctly
+                    MenuData updatedData = guiManager.getMenuData(player.getUniqueId());
+                    if (updatedData != null && previousType != null) {
+                        updatedData.setPreviousMenuType(previousType);
+                    }
                 } else {
                     MessageUtils.sendErrorMessage(player, "Failed to buy the items.");
                 }
@@ -179,8 +203,17 @@ public class ItemDetailsMenuHandler {
                 MessageUtils.sendSuccessMessage(player, "You sold 1x " + getItemName(shopItemData.getItem()) + 
                         " for " + plugin.getEconomyManager().formatCurrency(price, shopItemData.getCurrency()));
                 
+                // Store the current menu data's previousMenuType
+                MenuType previousType = menuData.getPreviousMenuType();
+                
                 // Update the menu
                 openItemDetailsMenu(guiManager, plugin, player, shopItemData);
+                
+                // Re-apply the previous menu type to ensure we can navigate back correctly
+                MenuData updatedData = guiManager.getMenuData(player.getUniqueId());
+                if (updatedData != null && previousType != null) {
+                    updatedData.setPreviousMenuType(previousType);
+                }
             } else {
                 MessageUtils.sendErrorMessage(player, "Failed to sell the item.");
             }
@@ -190,9 +223,9 @@ public class ItemDetailsMenuHandler {
         
         // Back button
         if (slot == 31) {
-            // Go back to the category menu
-            // We'd need to get the category from somewhere, for now just go to the main menu
-            guiManager.openMainMenu(player);
+            // Use the proper returnToPreviousMenu method to go back to the previous menu
+            // instead of always going to the main menu
+            guiManager.returnToPreviousMenu(player);
             return true;
         }
         

@@ -33,13 +33,28 @@ The `DefaultPricingMap` maintains a comprehensive mapping of Minecraft items to 
 
 ### Creating an Admin Shop
 
-To create an admin shop:
+There are multiple ways to create admin shops:
+
+#### Method 1: Manual Creation
+
+To create an admin shop manually:
 
 ```
 /fs admin shop create <name>
 ```
 
 This creates a new admin shop at your current location.
+
+#### Method 2: Using Templates
+
+For efficient shop creation and consistent pricing:
+
+1. Access the template management menu via `/fs admin template manage`
+2. Select or create an admin shop template
+3. Configure the template with the desired items and prices
+4. Use the template to create a new admin shop
+
+Using templates ensures consistency across admin shops and saves time when creating multiple shops with similar items. For detailed information, see the [Shop Templates](templates.md) documentation.
 
 ### Populating the Admin Shop
 

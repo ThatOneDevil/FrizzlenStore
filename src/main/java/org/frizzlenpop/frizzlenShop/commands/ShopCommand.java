@@ -27,7 +27,7 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
 
     private final FrizzlenShop plugin;
     private final List<String> subCommands = Arrays.asList(
-            "browse", "search", "create", "manage", "history", "sell", "buy", "help"
+            "browse", "search", "create", "manage", "history", "sell", "buy", "help", "quicksell"
     );
 
     /**
@@ -78,6 +78,8 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
                 return handleBuyCommand(player, args);
             case "help":
                 return handleHelpCommand(player, args);
+            case "quicksell":
+                return handleQuickSellCommand(player, args);
             default:
                 MessageUtils.sendErrorMessage(player, "Unknown sub-command. Use /shop help for a list of commands.");
                 return true;
@@ -328,7 +330,20 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
         MessageUtils.sendMessage(player, "&7/shop history &f- View your transaction history");
         MessageUtils.sendMessage(player, "&7/shop sell <item> [amount] [price] &f- Quick-sell items");
         MessageUtils.sendMessage(player, "&7/shop buy <item> [amount] &f- Quick-buy items");
+        MessageUtils.sendMessage(player, "&7/shop quicksell &f- Open bulk selling interface");
         MessageUtils.sendMessage(player, "&7/shop help &f- Show this help message");
+        return true;
+    }
+
+    /**
+     * Handles the /shop quicksell command
+     *
+     * @param player The player
+     * @param args   The command arguments
+     * @return True if the command was handled, false otherwise
+     */
+    private boolean handleQuickSellCommand(Player player, String[] args) {
+        plugin.getGuiManager().openQuickSellMenu(player);
         return true;
     }
 

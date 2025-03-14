@@ -138,6 +138,37 @@ The Economy Integration module connects with:
 - **[Player Shop System](player-shop.md)**: Handles player shop earnings and withdrawals
 - **[Dynamic Pricing](dynamic-pricing.md)**: Uses transaction data to adjust prices
 - **[Market Analysis](market-analysis.md)**: Provides transaction data for analysis
+- **[Shop Templates](templates.md)**: Preserves economic configurations in templates
+
+## Templates and Economy
+
+The Shop Templates system integrates with the Economy module in several ways:
+
+### Currency Configuration
+
+Templates store the currency configuration of shops, allowing:
+
+1. **Currency Consistency**: Deploy shops with consistent currency settings
+2. **Multi-Currency Templates**: Create templates for different currencies
+3. **Currency Conversion**: Option to convert between currencies when applying templates
+
+### Economic Presets
+
+Templates can include economic presets for different server economies:
+
+1. **Economy Scale Presets**: Templates for high-inflation, medium, or low-inflation economies
+2. **Starting Shop Templates**: Specially designed templates for new players with limited funds
+3. **Premium Shop Templates**: High-end templates for established players with more resources
+
+### Template Costs
+
+The template system can include economic costs for using templates:
+
+1. **Template Purchase**: Server owners can set costs for accessing premium templates
+2. **Template Application Fee**: Optional fee for applying a template to a shop
+3. **Template Creation Rebates**: Reward players for creating popular templates
+
+To manage these economic aspects of templates, use the Template Management menu via `/fs admin template manage` and select the "Economy Settings" option.
 
 ## Developer API
 

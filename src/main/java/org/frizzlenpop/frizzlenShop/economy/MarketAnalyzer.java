@@ -11,7 +11,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,6 +40,15 @@ public class MarketAnalyzer {
     private static final double DEFAULT_VOLATILITY = 0.05; // 5% change per cycle
     private static final int ANALYSIS_PERIOD_DAYS = 7; // Analyze data from the last 7 days
     
+    // Config-based values
+    private double volatilityMultiplier;
+    private double maxPriceChange;
+    private double normalizationRate;
+    private long analysisIntervalMinutes;
+    private boolean useCraftingRelationships;
+    private boolean fluctuationEnabled;
+    private double fluctuationMagnitude;
+    
     /**
      * Creates a new market analyzer
      * 
@@ -50,8 +61,23 @@ public class MarketAnalyzer {
         this.marketDataCache = new ConcurrentHashMap<>();
         this.itemTransactionCache = new ConcurrentHashMap<>();
         
+        // Load config values
+        this.volatilityMultiplier = configManager.getVolatilityMultiplier();
+        this.maxPriceChange = configManager.getMaxPriceChange();
+        this.normalizationRate = configManager.getNormalizationRate();
+        this.analysisIntervalMinutes = configManager.getAnalysisInterval();
+        this.useCraftingRelationships = configManager.useCraftingRelationships();
+        this.fluctuationEnabled = configManager.isPriceFluctuationEnabled();
+        this.fluctuationMagnitude = configManager.getFluctuationMagnitude();
+        
         // Initialize the database tables
         initializeDatabase();
+        
+        // Log initialization
+        plugin.getLogger().info("Market analyzer initialized with volatility: " + volatilityMultiplier + 
+                                ", max price change: " + maxPriceChange +
+                                ", analysis interval: " + analysisIntervalMinutes + " minutes" +
+                                ", fluctuation: " + (fluctuationEnabled ? "enabled" : "disabled"));
     }
     
     /**
@@ -289,58 +315,58 @@ public class MarketAnalyzer {
      * @return The calculated dynamic price
      */
     public double calculateDynamicPrice(double basePrice, ShopItem item, boolean isBuyPrice) {
+        // Don't process null items
+        if (item == null) {
+            return basePrice;
+        }
+        
+        // Get the material for this item
         Material material = item.getItem().getType();
         
-        // Get market data
+        // Get market data for this material
         MarketData marketData = getMarketData(material);
         
-        // Get item transaction data
-        ItemTransactionData transactionData = getItemTransactionData(item.getId());
+        // If no market data, return base price
+        if (marketData == null) {
+            return basePrice;
+        }
         
-        // Calculate adjustments based on market conditions
-        double demandAdjustment = marketData.getDemandIndex() - 0.5; // Range from -0.5 to 0.5
-        double supplyAdjustment = 0.5 - marketData.getSupplyIndex(); // Range from -0.5 to 0.5
+        // Calculate market multiplier based on supply and demand
+        double demandIndex = marketData.getDemandIndex();
+        double supplyIndex = marketData.getSupplyIndex();
+        double marketMultiplier;
         
-        // Different multipliers for buy vs sell prices
-        double marketMultiplier = isBuyPrice ? 
-                1.0 + (demandAdjustment * 0.5) + (supplyAdjustment * 0.3) : 
-                1.0 + (demandAdjustment * 0.3) + (supplyAdjustment * 0.5);
+        if (isBuyPrice) {
+            // For buy prices, higher demand increases price, higher supply decreases price
+            marketMultiplier = (demandIndex / supplyIndex);
+        } else {
+            // For sell prices, higher supply decreases price, higher demand increases price
+            marketMultiplier = (demandIndex / supplyIndex) * 0.8; // Sell prices are generally lower
+        }
         
-        // Apply item-specific price adjustment factor
-        double itemMultiplier = transactionData.getPriceAdjustmentFactor();
+        // Apply crafting relationships if enabled
+        double craftMultiplier = 1.0;
+        if (useCraftingRelationships && item.isCrafted()) {
+            // Get crafting multiplier based on component costs
+            craftMultiplier = getCraftingMultiplier(item);
+        }
         
-        // Apply fluctuation based on volatility
-        double fluctuation = calculateFluctuationFactor(material);
-        
-        // If this is a crafted item, consider components' prices
-        double craftValueMultiplier = 1.0;
-        if (item.isCrafted()) {
-            double craftValue = item.getCraftingValue();
-            if (craftValue > 0) {
-                // Adjust price based on craft value relation to base price
-                // Don't let base price go below craft value for buy prices
-                if (isBuyPrice && craftValue > basePrice) {
-                    basePrice = craftValue;
-                } else if (!isBuyPrice) {
-                    // For sell prices, ensure they don't go above craft value (prevents infinite money)
-                    craftValueMultiplier = Math.min(1.0, craftValue / basePrice * 0.9);
-                }
-            }
+        // Apply natural price fluctuation if enabled
+        double fluctuation = 0.0;
+        if (fluctuationEnabled) {
+            // Random fluctuation within the configured magnitude
+            fluctuation = (Math.random() * 2 - 1) * fluctuationMagnitude;
         }
         
         // Calculate final price
-        double finalPrice = basePrice * marketMultiplier * itemMultiplier * craftValueMultiplier * (1.0 + fluctuation);
+        double adjustedPrice = basePrice * marketMultiplier * craftMultiplier * (1 + fluctuation);
         
-        // Ensure price doesn't change too dramatically (max 50% change)
-        double maxChange = basePrice * 0.5;
-        if (finalPrice > basePrice + maxChange) {
-            finalPrice = basePrice + maxChange;
-        } else if (finalPrice < basePrice - maxChange) {
-            finalPrice = basePrice - maxChange;
-        }
+        // Limit maximum price change based on config
+        double minPrice = basePrice * (1 - maxPriceChange);
+        double maxPrice = basePrice * (1 + maxPriceChange);
         
-        // Round to 2 decimal places
-        return Math.round(finalPrice * 100.0) / 100.0;
+        // Ensure price stays within limits
+        return Math.max(minPrice, Math.min(maxPrice, adjustedPrice));
     }
     
     /**
@@ -459,7 +485,7 @@ public class MarketAnalyzer {
      * Should be called periodically (e.g., once per day)
      */
     public void performMarketAnalysis() {
-        if (!configManager.isDynamicPricingEnabled()) {
+        if (!plugin.getConfigManager().isDynamicPricingEnabled()) {
             return; // Dynamic pricing is disabled
         }
         
@@ -468,126 +494,93 @@ public class MarketAnalyzer {
         try {
             Connection conn = databaseManager.getConnection();
             
-            // Get all materials with market data
-            String query = "SELECT * FROM " + databaseManager.getTablePrefix() + "market_trends";
+            // Get all materials from the database
+            String query = "SELECT material FROM " + databaseManager.getTablePrefix() + "market_trends";
             PreparedStatement ps = conn.prepareStatement(query);
             ResultSet rs = ps.executeQuery();
             
+            long currentTime = System.currentTimeMillis();
+            List<String> materials = new ArrayList<>();
+            
             while (rs.next()) {
-                String materialName = rs.getString("material");
-                double demandIndex = rs.getDouble("demand_index");
-                double supplyIndex = rs.getDouble("supply_index");
-                double volatility = rs.getDouble("volatility");
-                long lastUpdated = rs.getLong("last_updated");
-                
-                // Get the current time
-                long currentTime = System.currentTimeMillis();
-                
-                // If no recent activity, gradually normalize the indices
-                if (currentTime - lastUpdated > 86400000) { // More than a day old
-                    // Normalize gradually (move 10% closer to 1.0)
-                    demandIndex = demandIndex + (1.0 - demandIndex) * 0.1;
-                    supplyIndex = supplyIndex + (1.0 - supplyIndex) * 0.1;
-                    
-                    // Update the database
-                    String update = "UPDATE " + databaseManager.getTablePrefix() + "market_trends SET "
-                        + "demand_index = ?, supply_index = ?, last_updated = ? WHERE material = ?";
-                    PreparedStatement updatePs = conn.prepareStatement(update);
-                    updatePs.setDouble(1, demandIndex);
-                    updatePs.setDouble(2, supplyIndex);
-                    updatePs.setLong(3, currentTime);
-                    updatePs.setString(4, materialName);
-                    updatePs.executeUpdate();
-                    updatePs.close();
-                    
-                    // Clear cache
-                    try {
-                        Material material = Material.valueOf(materialName);
-                        marketDataCache.remove(material);
-                    } catch (IllegalArgumentException e) {
-                        // Invalid material name, ignore
-                    }
-                }
+                materials.add(rs.getString("material"));
             }
             
             rs.close();
             ps.close();
             
-            // Update item-specific price adjustment factors
-            updateItemPriceAdjustmentFactors(conn);
+            // Analyze each material
+            for (String materialName : materials) {
+                try {
+                    Material material = Material.valueOf(materialName);
+                    normalizeMarketData(conn, material, currentTime);
+                } catch (IllegalArgumentException e) {
+                    // Skip invalid materials
+                    continue;
+                }
+            }
             
             conn.close();
             
-            plugin.getLogger().info("Market analysis completed successfully.");
+            // Clear caches to ensure fresh data is loaded
+            marketDataCache.clear();
+            
+            plugin.getLogger().info("Market analysis completed for " + materials.size() + " materials");
             
         } catch (SQLException e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to perform market analysis", e);
+            plugin.getLogger().severe("Error performing market analysis: " + e.getMessage());
         }
     }
     
     /**
-     * Updates price adjustment factors for individual items based on transaction history
+     * Normalizes market data for a material over time
+     * This gradually returns prices to baseline if there's no activity
      * 
      * @param conn The database connection
+     * @param material The material to normalize
+     * @param currentTime The current time in milliseconds
      * @throws SQLException If a database error occurs
      */
-    private void updateItemPriceAdjustmentFactors(Connection conn) throws SQLException {
-        // Get all item transaction data
-        String query = "SELECT * FROM " + databaseManager.getTablePrefix() + "item_transactions";
+    private void normalizeMarketData(Connection conn, Material material, long currentTime) throws SQLException {
+        String query = "SELECT * FROM " + databaseManager.getTablePrefix() + "market_trends WHERE material = ?";
         PreparedStatement ps = conn.prepareStatement(query);
+        ps.setString(1, material.toString());
         ResultSet rs = ps.executeQuery();
         
-        long currentTime = System.currentTimeMillis();
-        long analysisThreshold = currentTime - (ANALYSIS_PERIOD_DAYS * 86400000L); // 7 days in milliseconds
-        
-        while (rs.next()) {
-            String itemId = rs.getString("item_id");
-            int buyCount = rs.getInt("buy_count");
-            int sellCount = rs.getInt("sell_count");
-            long lastBuyTime = rs.getLong("last_buy_time");
-            long lastSellTime = rs.getLong("last_sell_time");
+        if (rs.next()) {
+            double demandIndex = rs.getDouble("demand_index");
+            double supplyIndex = rs.getDouble("supply_index");
+            long lastUpdated = rs.getLong("last_updated");
             
-            // Only consider recent transactions
-            if (lastBuyTime < analysisThreshold && lastSellTime < analysisThreshold) {
-                continue; // Skip items with no recent activity
+            // Calculate how long it's been since the last update
+            // The longer it's been, the more we normalize
+            double daysSinceUpdate = (currentTime - lastUpdated) / (1000.0 * 60 * 60 * 24);
+            
+            // Skip recent updates
+            if (daysSinceUpdate < 0.5) { // Less than 12 hours
+                return;
             }
             
-            // Calculate transaction ratio (buy:sell)
-            double transactionRatio = 1.0; // Neutral by default
-            if (buyCount > 0 && sellCount > 0) {
-                transactionRatio = (double) buyCount / sellCount;
-            } else if (buyCount > 0) {
-                transactionRatio = 1.0 + (Math.min(buyCount, 100) * 0.01); // Cap at 2.0 (100% increase)
-            } else if (sellCount > 0) {
-                transactionRatio = 1.0 / (1.0 + (Math.min(sellCount, 100) * 0.01)); // Floor at 0.5 (50% decrease)
-            }
+            // Calculate normalization factor based on time and config
+            double normalizationFactor = daysSinceUpdate * normalizationRate;
             
-            // Calculate the new price adjustment factor
-            // High buy:sell ratio means higher demand, so increase price
-            double newAdjustmentFactor;
-            if (transactionRatio > 1.0) {
-                // More buys than sells, increase price (max 50% increase)
-                newAdjustmentFactor = Math.min(1.5, 1.0 + ((transactionRatio - 1.0) * 0.1));
-            } else {
-                // More sells than buys, decrease price (max 30% decrease)
-                newAdjustmentFactor = Math.max(0.7, 1.0 - ((1.0 - transactionRatio) * 0.1));
-            }
+            // Limit the maximum normalization
+            normalizationFactor = Math.min(normalizationFactor, 0.5);
+            
+            // Normalize demand and supply indices towards 1.0 (neutral)
+            demandIndex = demandIndex + normalizationFactor * (1.0 - demandIndex);
+            supplyIndex = supplyIndex + normalizationFactor * (1.0 - supplyIndex);
             
             // Update the database
-            String update = "UPDATE " + databaseManager.getTablePrefix() + "item_transactions SET "
-                + "price_adjustment_factor = ? WHERE item_id = ?";
+            String update = "UPDATE " + databaseManager.getTablePrefix() + "market_trends SET " +
+                    "demand_index = ?, supply_index = ?, last_updated = ? WHERE material = ?";
             PreparedStatement updatePs = conn.prepareStatement(update);
-            updatePs.setDouble(1, newAdjustmentFactor);
-            updatePs.setString(2, itemId);
+            updatePs.setDouble(1, demandIndex);
+            updatePs.setDouble(2, supplyIndex);
+            updatePs.setLong(3, currentTime);
+            updatePs.setString(4, material.toString());
             updatePs.executeUpdate();
             updatePs.close();
-            
-            // Clear cache
-            try {
-                itemTransactionCache.remove(UUID.fromString(itemId));
-            } catch (IllegalArgumentException e) {
-                // Invalid UUID, ignore
-            }
         }
         
         rs.close();
@@ -654,6 +647,32 @@ public class MarketAnalyzer {
                 (e1, e2) -> e1, 
                 HashMap::new
             ));
+    }
+    
+    /**
+     * Clears the trend data after prices have been updated
+     * This prevents the same trends from affecting prices again
+     */
+    public void clearTrendData() {
+        try {
+            Connection conn = databaseManager.getConnection();
+            
+            // Reset all demand and supply indices to 1.0 (neutral)
+            String update = "UPDATE " + databaseManager.getTablePrefix() + "market_trends " +
+                            "SET demand_index = 1.0, supply_index = 1.0";
+            
+            PreparedStatement ps = conn.prepareStatement(update);
+            ps.executeUpdate();
+            ps.close();
+            conn.close();
+            
+            // Also clear the cache
+            marketDataCache.clear();
+            
+            plugin.getLogger().info("Market trend data has been cleared after price updates");
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to clear market trend data", e);
+        }
     }
     
     /**
@@ -859,5 +878,159 @@ public class MarketAnalyzer {
         }
         
         return ((marketValue - craftCost) / craftCost) * 100.0;
+    }
+
+    /**
+     * Determines if a price should change based on transaction quantity and volatility
+     * 
+     * @param quantity The quantity of items being transacted
+     * @param material The material type
+     * @return True if the price should be updated
+     */
+    public boolean shouldUpdatePrice(int quantity, Material material) {
+        // Always update prices for transactions of 16 or more items
+        if (quantity >= 16) {
+            return true;
+        }
+        
+        // Get material volatility (some materials change price more easily)
+        double materialVolatility = getMaterialVolatility(material);
+        
+        // Combine material volatility with config volatility
+        double effectiveVolatility = materialVolatility * volatilityMultiplier;
+        
+        // Calculate probability of price change based on quantity and volatility
+        // Higher quantities and volatility increase chance of price change
+        double changeChance = Math.min(1.0, quantity * effectiveVolatility * 0.1);
+        
+        // Return true with probability equal to changeChance
+        return Math.random() < changeChance;
+    }
+    
+    /**
+     * Gets the volatility factor for a specific material
+     * Some materials are more volatile than others
+     * 
+     * @param material The material to check
+     * @return The volatility factor (higher = more volatile)
+     */
+    private double getMaterialVolatility(Material material) {
+        // Get from database if available
+        MarketData marketData = getMarketData(material);
+        if (marketData != null && marketData.getVolatility() > 0) {
+            return marketData.getVolatility();
+        }
+        
+        // Default volatilities for material categories
+        String name = material.name();
+        
+        // Rare materials are more volatile
+        if (name.contains("DIAMOND") || name.contains("EMERALD") || 
+            name.contains("NETHERITE") || name.contains("BEACON")) {
+            return 2.0;
+        }
+        
+        // Moderately rare materials
+        if (name.contains("GOLD") || name.contains("LAPIS") || 
+            name.contains("ENDER") || name.contains("BLAZE")) {
+            return 1.5;
+        }
+        
+        // Common materials are less volatile
+        if (name.contains("STONE") || name.contains("DIRT") || 
+            name.contains("SAND") || name.contains("WOOD")) {
+            return 0.5;
+        }
+        
+        // Default volatility
+        return 1.0;
+    }
+
+    /**
+     * Updates market data with the configuration values
+     * Call this when configuration changes to ensure market analysis uses the latest settings
+     */
+    public void updateConfigSettings() {
+        this.volatilityMultiplier = configManager.getVolatilityMultiplier();
+        this.maxPriceChange = configManager.getMaxPriceChange();
+        this.normalizationRate = configManager.getNormalizationRate();
+        this.analysisIntervalMinutes = configManager.getAnalysisInterval();
+        this.useCraftingRelationships = configManager.useCraftingRelationships();
+        this.fluctuationEnabled = configManager.isPriceFluctuationEnabled();
+        this.fluctuationMagnitude = configManager.getFluctuationMagnitude();
+        
+        plugin.getLogger().info("Market analyzer settings updated");
+    }
+
+    /**
+     * Gets a multiplier based on the crafting cost of an item
+     * 
+     * @param item The shop item
+     * @return A multiplier for the price based on crafting costs
+     */
+    private double getCraftingMultiplier(ShopItem item) {
+        if (!item.isCrafted()) {
+            return 1.0;
+        }
+        
+        // Get the components and their costs
+        Map<Material, Integer> components = item.getCraftingComponents();
+        if (components == null || components.isEmpty()) {
+            return 1.0;
+        }
+        
+        // Calculate the base cost of crafting
+        double craftingCost = 0.0;
+        for (Map.Entry<Material, Integer> entry : components.entrySet()) {
+            Material componentMaterial = entry.getKey();
+            int quantity = entry.getValue();
+            
+            // Get component's market value
+            MarketData componentData = getMarketData(componentMaterial);
+            double componentPrice = plugin.getShopManager().getDefaultBuyPrice(new ItemStack(componentMaterial));
+            
+            // Adjust component price by market data if available
+            if (componentData != null) {
+                double demandIndex = componentData.getDemandIndex();
+                double supplyIndex = componentData.getSupplyIndex();
+                componentPrice *= (demandIndex / supplyIndex);
+            }
+            
+            // Add to total cost
+            craftingCost += componentPrice * quantity;
+        }
+        
+        // Add crafting fee (15% of component cost)
+        craftingCost *= 1.15;
+        
+        // Calculate the multiplier based on the relation between crafting cost and item's base price
+        double basePrice = plugin.getShopManager().getDefaultBuyPrice(item.getItem());
+        
+        if (basePrice <= 0) {
+            return 1.0;
+        }
+        
+        // If crafting cost is higher than base price, increase the multiplier
+        // If crafting cost is lower than base price, decrease the multiplier
+        double multiplier = craftingCost / basePrice;
+        
+        // Limit extreme values
+        return Math.max(0.8, Math.min(1.5, multiplier));
+    }
+
+    /**
+     * Clears the cache for a specific material
+     * Used when resetting pricing data for a material
+     * 
+     * @param material The material to clear from cache
+     */
+    public void clearCacheForMaterial(Material material) {
+        if (material != null) {
+            // Remove from market data cache
+            marketDataCache.remove(material);
+            
+            // Log the cache clear
+            plugin.getLogger().info("Cleared market data cache for " + material.name());
+        }
     }
 } 

@@ -75,7 +75,7 @@ public class DataManager {
                         Location location = deserializeLocation(shopSection.getConfigurationSection("location"));
                         
                         if (name != null && location != null) {
-                            AdminShop shop = new AdminShop(plugin, name, location);
+                            AdminShop shop = new AdminShop(shopId, name, location);
                             loadShopItems(shop, shopSection.getConfigurationSection("items"));
                             
                             // Load additional properties
@@ -90,8 +90,8 @@ public class DataManager {
                             // Load stats
                             loadShopStats(shop, shopSection.getConfigurationSection("stats"));
                             
-                            plugin.getShopManager().addShop(shop);
-                            plugin.getLogger().info("Loaded admin shop: " + name);
+                            plugin.getShopManager().registerShop(shop);
+                            plugin.getLogger().info("Loaded admin shop: " + name + " with ID: " + shopId);
                         }
                     }
                 } catch (Exception e) {
@@ -114,7 +114,7 @@ public class DataManager {
                         Location location = deserializeLocation(shopSection.getConfigurationSection("location"));
                         
                         if (name != null && owner != null && location != null) {
-                            PlayerShop shop = new PlayerShop(plugin, name, owner, location);
+                            PlayerShop shop = new PlayerShop(shopId, name, owner, location);
                             loadShopItems(shop, shopSection.getConfigurationSection("items"));
                             
                             // Load additional properties
@@ -137,8 +137,8 @@ public class DataManager {
                             // Load stats
                             loadShopStats(shop, shopSection.getConfigurationSection("stats"));
                             
-                            plugin.getShopManager().addShop(shop);
-                            plugin.getLogger().info("Loaded player shop: " + name);
+                            plugin.getShopManager().registerShop(shop);
+                            plugin.getLogger().info("Loaded player shop: " + name + " with ID: " + shopId);
                         }
                     }
                 } catch (Exception e) {
@@ -170,7 +170,15 @@ public class DataManager {
                     int stock = itemSection.getInt("stock");
                     
                     if (item != null) {
-                        shop.addItem(item, buyPrice, sellPrice, currency, stock);
+                        // Create the shop item with the shop's ID
+                        UUID itemId = UUID.fromString(key);
+                        ShopItem shopItem = new ShopItem(itemId, shop.getId(), item, buyPrice, sellPrice, currency, stock);
+                        
+                        // Explicitly set the shop ID to ensure it's not null
+                        shopItem.setShopId(shop.getId());
+                        
+                        // Add the item to the shop
+                        shop.addItem(shopItem);
                     }
                 }
             } catch (Exception e) {
@@ -226,6 +234,15 @@ public class DataManager {
                 // Save stats
                 ConfigurationSection statsSection = shopSection.createSection("stats");
                 saveShopStats(shop, statsSection);
+                
+                // Save to database as well
+                try {
+                    if (plugin.getDatabaseManager() != null) {
+                        plugin.getDatabaseManager().saveShop(shop);
+                    }
+                } catch (Exception e) {
+                    plugin.getLogger().log(Level.WARNING, "Failed to save shop to database: " + e.getMessage(), e);
+                }
             } catch (Exception e) {
                 plugin.getLogger().log(Level.WARNING, "Failed to save admin shop: " + shop.getName(), e);
             }
@@ -258,6 +275,15 @@ public class DataManager {
                     shopSection.set("expiration-time", playerShop.getExpirationTime());
                     shopSection.set("auto-renew", playerShop.isAutoRenewEnabled());
                 }
+                
+                // Save to database as well
+                try {
+                    if (plugin.getDatabaseManager() != null) {
+                        plugin.getDatabaseManager().saveShop(shop);
+                    }
+                } catch (Exception e) {
+                    plugin.getLogger().log(Level.WARNING, "Failed to save shop to database: " + e.getMessage(), e);
+                }
             } catch (Exception e) {
                 plugin.getLogger().log(Level.WARNING, "Failed to save player shop: " + shop.getName(), e);
             }
@@ -278,16 +304,26 @@ public class DataManager {
      * @param itemsSection The configuration section to save items to
      */
     private void saveShopItems(Shop shop, ConfigurationSection itemsSection) {
-        int index = 0;
         for (ShopItem shopItem : shop.getItems()) {
             try {
-                ConfigurationSection itemSection = itemsSection.createSection("item_" + index);
+                // Use the item's UUID as the section key for consistency with loading
+                ConfigurationSection itemSection = itemsSection.createSection(shopItem.getId().toString());
                 itemSection.set("item", shopItem.getItem());
                 itemSection.set("buy-price", shopItem.getBuyPrice());
                 itemSection.set("sell-price", shopItem.getSellPrice());
                 itemSection.set("currency", shopItem.getCurrency());
                 itemSection.set("stock", shopItem.getStock());
-                index++;
+                // Save the shop ID for additional verification
+                itemSection.set("shop-id", shopItem.getShopId().toString());
+                
+                // Save to database as well to ensure consistency
+                try {
+                    if (plugin.getDatabaseManager() != null) {
+                        plugin.getDatabaseManager().saveShopItem(shopItem);
+                    }
+                } catch (Exception e) {
+                    plugin.getLogger().log(Level.WARNING, "Failed to save shop item to database: " + e.getMessage(), e);
+                }
             } catch (Exception e) {
                 plugin.getLogger().log(Level.WARNING, "Failed to save shop item", e);
             }

@@ -29,6 +29,10 @@ public class PlayerShop implements Shop {
     private final Map<String, Double> stats;
     private boolean autoRenew;
     private boolean open;
+    private boolean isPublic = true;
+    private String theme = "default";
+    private boolean notificationsEnabled = true;
+    private String category = "misc";
 
     /**
      * Create a new player shop
@@ -169,6 +173,9 @@ public class PlayerShop implements Shop {
                 return false; // Item already exists
             }
         }
+        
+        // Set the shop ID on the item
+        shopItem.setShopId(this.id);
         
         // Add the item
         items.add(shopItem);
@@ -665,5 +672,62 @@ public class PlayerShop implements Shop {
     @Override
     public void setOpen(boolean open) {
         this.open = open;
+    }
+
+    @Override
+    public String getOwnerName() {
+        OfflinePlayer player = Bukkit.getOfflinePlayer(owner);
+        return player.getName() != null ? player.getName() : owner.toString();
+    }
+
+    @Override
+    public boolean isPublic() {
+        return isPublic;
+    }
+
+    @Override
+    public void setPublic(boolean isPublic) {
+        this.isPublic = isPublic;
+    }
+
+    @Override
+    public String getTheme() {
+        return theme != null ? theme : "default";
+    }
+
+    @Override
+    public void setTheme(String theme) {
+        this.theme = theme;
+    }
+
+    @Override
+    public boolean areNotificationsEnabled() {
+        return notificationsEnabled;
+    }
+
+    @Override
+    public void setNotificationsEnabled(boolean enabled) {
+        this.notificationsEnabled = enabled;
+    }
+
+    @Override
+    public int getTier() {
+        // Player shops don't have tiers
+        return 0;
+    }
+
+    @Override
+    public void setTier(int tier) {
+        // Player shops don't have tiers, so this is a no-op
+    }
+
+    @Override
+    public String getCategory() {
+        return category != null ? category : "misc";
+    }
+
+    @Override
+    public void setCategory(String category) {
+        this.category = category;
     }
 } 

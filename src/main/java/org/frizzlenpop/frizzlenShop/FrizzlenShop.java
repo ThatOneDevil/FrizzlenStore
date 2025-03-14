@@ -16,6 +16,7 @@ import org.frizzlenpop.frizzlenShop.listeners.PlayerListener;
 import org.frizzlenpop.frizzlenShop.listeners.ShopListener;
 import org.frizzlenpop.frizzlenShop.shops.AdminShopPopulator;
 import org.frizzlenpop.frizzlenShop.shops.ShopManager;
+import org.frizzlenpop.frizzlenShop.templates.TemplateManager;
 import org.frizzlenpop.frizzlenShop.utils.DatabaseManager;
 import org.frizzlenpop.frizzlenShop.utils.LogManager;
 import org.frizzlenpop.frizzlenShop.utils.MessageUtils;
@@ -36,6 +37,7 @@ public final class FrizzlenShop extends JavaPlugin {
     private DynamicPricingManager dynamicPricingManager;
     private CraftingRelationManager craftingRelationManager;
     private AdminShopPopulator adminShopPopulator;
+    private TemplateManager templateManager;
 
     @Override
     public void onEnable() {
@@ -71,6 +73,9 @@ public final class FrizzlenShop extends JavaPlugin {
         // Initialize crafting relation manager
         craftingRelationManager = new CraftingRelationManager(this);
         
+        // Initialize template manager
+        templateManager = new TemplateManager(this);
+        
         // Initialize dynamic pricing manager (must be after database is initialized)
         if (configManager.isDynamicPricingEnabled()) {
             getLogger().info("Dynamic pricing is enabled, initializing market system...");
@@ -103,6 +108,11 @@ public final class FrizzlenShop extends JavaPlugin {
         // Initialize admin shop with tiered pricing system
         adminShopPopulator = new AdminShopPopulator(this);
         
+        // Add debug log about admin shop settings
+        getLogger().info("Admin shops enabled: " + configManager.areAdminShopsEnabled());
+        getLogger().info("First run: " + configManager.isFirstRun());
+        getLogger().info("Force refresh admin shops: " + configManager.isForceAdminShopRefresh());
+        
         // Check if we should populate admin shops (either first run or force via config)
         if (configManager.isFirstRun() || configManager.isForceAdminShopRefresh()) {
             getLogger().info("Populating admin shops with tiered pricing...");
@@ -131,6 +141,11 @@ public final class FrizzlenShop extends JavaPlugin {
             }
             
             getLogger().info("Admin shops successfully populated!");
+        } else {
+            getLogger().info("Using existing admin shops, skipping population.");
+            // Debug log the count of existing admin shops
+            int adminShopCount = getShopManager().getAdminShops().size();
+            getLogger().info("Found " + adminShopCount + " existing admin shops in the system.");
         }
         
         getLogger().info("FrizzlenShop has been enabled!");
@@ -140,6 +155,11 @@ public final class FrizzlenShop extends JavaPlugin {
     public void onDisable() {
         if (dataManager != null) {
             dataManager.saveData();
+        }
+        
+        // Save templates
+        if (templateManager != null) {
+            templateManager.saveTemplates();
         }
         
         getLogger().info("FrizzlenShop has been disabled!");
@@ -226,5 +246,14 @@ public final class FrizzlenShop extends JavaPlugin {
      */
     public AdminShopPopulator getAdminShopPopulator() {
         return adminShopPopulator;
+    }
+
+    /**
+     * Get the template manager
+     *
+     * @return The template manager
+     */
+    public TemplateManager getTemplateManager() {
+        return templateManager;
     }
 }

@@ -1,14 +1,21 @@
 package org.frizzlenpop.frizzlenShop.gui;
 
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.frizzlenpop.frizzlenShop.FrizzlenShop;
 import org.frizzlenpop.frizzlenShop.listeners.ChatListener;
 import org.frizzlenpop.frizzlenShop.shops.Shop;
 import org.frizzlenpop.frizzlenShop.shops.ShopItem;
 import org.frizzlenpop.frizzlenShop.utils.MessageUtils;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,21 +35,37 @@ public class ShopItemsMenuHandler {
      * @return True if the click was handled, false otherwise
      */
     public static boolean handleClick(GuiManager guiManager, FrizzlenShop plugin, Player player, int slot, MenuData menuData) {
-        // Get the shop ID from menu data
+        // Log the click to help debug
+        plugin.getLogger().info("ShopItemsMenuHandler: handleClick - slot: " + slot);
+        
+        // Get the shop from menu data
+        Shop shop = null;
+        List<ShopItem> items = null;
+        
+        // There are two ways to get the shop - either from an ID or directly
         UUID shopId = menuData.getUUID("id");
-        
-        if (shopId == null) {
-            return false;
+        if (shopId != null) {
+            shop = plugin.getShopManager().getShop(shopId);
+        } else {
+            shop = (Shop) menuData.getData("shop");
         }
-        
-        // Get the shop
-        Shop shop = plugin.getShopManager().getShop(shopId);
         
         if (shop == null) {
             MessageUtils.sendErrorMessage(player, "This shop no longer exists.");
             player.closeInventory();
             return true;
         }
+        
+        // Get the items - either from the shop or directly from menu data
+        Object itemsObj = menuData.getData("items");
+        if (itemsObj != null && itemsObj instanceof List) {
+            items = (List<ShopItem>) itemsObj;
+        } else {
+            items = shop.getItems();
+        }
+        
+        // Log the number of items for debugging
+        plugin.getLogger().info("ShopItemsMenuHandler: shop: " + shop.getName() + ", items count: " + (items != null ? items.size() : "null"));
         
         // Handle add item button
         if (slot == 53) {
@@ -52,26 +75,153 @@ public class ShopItemsMenuHandler {
         
         // Handle back button
         if (slot == 49) {
-            guiManager.openShopManagementMenu(player, shopId);
+            if (shop.isAdminShop()) {
+                guiManager.openAdminShopsMenu(player);
+            } else {
+                guiManager.openShopManagementMenu(player, shop.getId());
+            }
             return true;
         }
         
         // Handle clicking on an item
         if (slot < 45) {
-            // Get the items in the shop
-            java.util.List<ShopItem> items = shop.getItems();
-            
             // Check if the slot contains a valid item
-            if (slot < items.size()) {
+            if (items != null && slot < items.size()) {
                 ShopItem shopItem = items.get(slot);
                 
-                // Open the item management menu for this item
-                guiManager.openItemManagementMenu(player, shopId, shopItem.getId());
+                // Create a ShopItemData object to pass to the item details menu
+                ShopItemData shopItemData = new ShopItemData(
+                        shop.getId(),
+                        shop.getName(),
+                        shopItem.getId(),
+                        shopItem.getItem(),
+                        shopItem.getBuyPrice(),
+                        shopItem.getSellPrice(),
+                        shopItem.getStock(),
+                        shopItem.getCurrency(),
+                        shop.isAdminShop()
+                );
+                
+                // Set the shop in the shop item data for easy access
+                shopItemData.setShop(shop);
+                
+                // Log that we're opening the item details menu
+                plugin.getLogger().info("Opening item details for " + shopItem.getItem().getType() + " in shop " + shop.getName());
+                
+                // Store the menu data for correct back button navigation
+                MenuData currentData = guiManager.getMenuData(player.getUniqueId());
+                if (currentData != null) {
+                    // Create menu data to store the information that we're coming from a shop items menu
+                    MenuData newData = new MenuData(MenuType.ITEM_DETAILS_MENU, shopItemData);
+                    
+                    // Store the shop ID for proper navigation
+                    newData.setData("id", shop.getId());
+                    
+                    // Use updateMenuData to properly preserve the previous menu type hierarchy
+                    guiManager.updateMenuData(player.getUniqueId(), newData);
+                    
+                    // Explicitly ensure the previous menu type is set to SHOP_ITEMS
+                    MenuData updatedData = guiManager.getMenuData(player.getUniqueId());
+                    if (updatedData != null) {
+                        updatedData.setPreviousMenuType(MenuType.SHOP_ITEMS);
+                    }
+                    
+                    // Open the menu with this data instead of the standard method
+                    ItemDetailsMenuHandler.openItemDetailsMenu(guiManager, plugin, player, shopItemData);
+                    return true;
+                }
+                
+                // Fallback to standard opening method
+                guiManager.openItemDetailsMenu(player, shopItemData);
                 return true;
             }
         }
         
         return false;
+    }
+    
+    /**
+     * Opens the shop items menu for a player
+     *
+     * @param guiManager The GUI manager
+     * @param plugin The plugin instance
+     * @param player The player to open the menu for
+     * @param shop The shop to show items for
+     */
+    public static void openShopItemsMenu(GuiManager guiManager, FrizzlenShop plugin, Player player, Shop shop) {
+        // Create inventory
+        String title = shop.getName() + " - Items";
+        Inventory inventory = Bukkit.createInventory(null, 9 * 6, title);
+        
+        // Get the items
+        List<ShopItem> items = shop.getItems();
+        
+        // Add items to inventory
+        for (int i = 0; i < Math.min(items.size(), 45); i++) {
+            ShopItem shopItem = items.get(i);
+            ItemStack item = shopItem.getItem().clone();
+            
+            // Add price information to the lore
+            ItemMeta meta = item.getItemMeta();
+            List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
+            
+            // Add spacing
+            if (!lore.isEmpty()) {
+                lore.add("");
+            }
+            
+            // Add price information
+            lore.add(ChatColor.GRAY + "Buy Price: " + ChatColor.YELLOW + 
+                    plugin.getEconomyManager().formatCurrency(shopItem.getBuyPrice(), shopItem.getCurrency()));
+            lore.add(ChatColor.GRAY + "Sell Price: " + ChatColor.YELLOW + 
+                    plugin.getEconomyManager().formatCurrency(shopItem.getSellPrice(), shopItem.getCurrency()));
+            
+            // Add stock information
+            String stockText = shopItem.getStock() == -1 ? "Unlimited" : String.valueOf(shopItem.getStock());
+            lore.add(ChatColor.GRAY + "Stock: " + ChatColor.YELLOW + stockText);
+            
+            // Add instruction
+            lore.add("");
+            lore.add(ChatColor.GREEN + "Click to view details");
+            
+            meta.setLore(lore);
+            item.setItemMeta(meta);
+            
+            inventory.setItem(i, item);
+        }
+        
+        // Add navigation buttons
+        ItemStack backButton = guiManager.createGuiItem(
+            Material.ARROW,
+            shop.isAdminShop() ? "&c&lBack to Admin Shops" : "&c&lBack",
+            Collections.singletonList(shop.isAdminShop() ? "&7Return to the admin shops list" : "&7Return to your shops")
+        );
+        inventory.setItem(49, backButton);
+        
+        // Add an add item button for shop owners or admins
+        if (player.hasPermission("frizzlenshop.admin") || 
+                (!shop.isAdminShop() && player.getUniqueId().equals(shop.getOwner()))) {
+            ItemStack addButton = guiManager.createGuiItem(
+                Material.EMERALD,
+                "&a&lAdd Item",
+                Arrays.asList(
+                    "&7Add a new item to this shop",
+                    "&7Hold the item you want to add"
+                )
+            );
+            inventory.setItem(53, addButton);
+        }
+        
+        // Fill empty slots
+        guiManager.fillEmptySlots(inventory);
+        
+        // Open inventory
+        player.openInventory(inventory);
+        
+        // Store menu data
+        MenuData menuData = new MenuData(MenuType.SHOP_ITEMS);
+        menuData.setData("id", shop.getId());
+        guiManager.updateMenuData(player.getUniqueId(), menuData);
     }
     
     /**

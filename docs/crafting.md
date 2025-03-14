@@ -199,4 +199,26 @@ The Crafting System integrates with several other features:
 - **[Dynamic Pricing](dynamic-pricing.md)**: Uses crafting costs in price calculations
 - **[Market Analysis](market-analysis.md)**: Provides crafting profitability data
 - **[Admin Shop System](admin-shop.md)**: Ensures admin shop prices reflect crafting costs
-- **[Player Shop System](player-shop.md)**: Suggests profitable items for players to craft and sell 
+- **[Player Shop System](player-shop.md)**: Suggests profitable items for players to craft and sell
+- **[Shop Templates](templates.md)**: Allows creating templates with profitable crafting items
+
+## Templates and Crafting
+
+The crafting system is integrated with the Shop Templates feature, allowing administrators and players to:
+
+1. **Create Crafting-Focused Templates**: Automatically populate templates with profitable crafting items
+2. **Template Profitability Analysis**: Templates can be analyzed to show their overall crafting profitability
+3. **Quick Deployment**: Deploy crafting-focused shops using templates when market conditions are favorable
+
+### Creating Crafting Templates
+
+To create a template based on profitable crafting items:
+
+1. Access the template menu: `/fs admin template manage`
+2. Select "Create Crafting Template"
+3. Choose the minimum profit margin (10-50%)
+4. Select a category for the template
+5. Give the template a name
+6. The system will automatically populate the template with currently profitable crafting items
+
+This provides a quick way to set up crafting-focused shops that players can use as a reference for what's currently profitable to craft. 

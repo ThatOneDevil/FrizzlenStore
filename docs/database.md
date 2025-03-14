@@ -195,6 +195,83 @@ The Database Manager integrates with:
 - **[Player Shop System](player-shop.md)**: Stores player shop data
 - **[Dynamic Pricing](dynamic-pricing.md)**: Stores market trend data
 - **[Market Analysis](market-analysis.md)**: Provides transaction data for analysis
+- **[Shop Templates](templates.md)**: Stores template data and manages template backups
+
+## Templates Database Schema
+
+The template system adds additional tables to the database:
+
+### Templates Table
+```sql
+CREATE TABLE IF NOT EXISTS templates (
+  id VARCHAR(36) PRIMARY KEY,
+  name VARCHAR(32) NOT NULL,
+  creator VARCHAR(36),
+  category VARCHAR(32),
+  shop_type VARCHAR(10) NOT NULL,
+  description TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  is_public BOOLEAN DEFAULT 0
+)
+```
+
+### Template Items Table
+```sql
+CREATE TABLE IF NOT EXISTS template_items (
+  id VARCHAR(36) PRIMARY KEY,
+  template_id VARCHAR(36) NOT NULL,
+  item_data TEXT NOT NULL,
+  buy_price DOUBLE NOT NULL,
+  sell_price DOUBLE NOT NULL,
+  stock_setting INT DEFAULT -1,
+  FOREIGN KEY (template_id) REFERENCES templates(id) ON DELETE CASCADE
+)
+```
+
+### Template Categories Table
+```sql
+CREATE TABLE IF NOT EXISTS template_categories (
+  id VARCHAR(36) PRIMARY KEY,
+  name VARCHAR(32) NOT NULL,
+  description TEXT,
+  creator VARCHAR(36),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+```
+
+### Template Backups Table
+```sql
+CREATE TABLE IF NOT EXISTS template_backups (
+  id VARCHAR(36) PRIMARY KEY,
+  template_id VARCHAR(36) NOT NULL,
+  backup_data TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_by VARCHAR(36),
+  FOREIGN KEY (template_id) REFERENCES templates(id) ON DELETE CASCADE
+)
+```
+
+## Template Data Operations
+
+The `DatabaseManager` class provides methods for template management:
+
+### Template Operations
+- `saveTemplate(Template)`: Saves a template to the database
+- `loadTemplates()`: Loads all templates from the database
+- `deleteTemplate(UUID)`: Deletes a template from the database
+- `getTemplatesByCategory(String)`: Gets templates by category
+- `getTemplatesByCreator(UUID)`: Gets templates created by a player
+
+### Template Item Operations
+- `saveTemplateItem(TemplateItem)`: Saves a template item
+- `loadTemplateItems(Template)`: Loads items for a template
+- `deleteTemplateItem(UUID)`: Deletes a template item
+
+### Template Backup Operations
+- `createTemplateBackup(Template)`: Creates a backup of a template
+- `restoreTemplateFromBackup(UUID)`: Restores a template from a backup
+- `getTemplateBackups(UUID)`: Gets all backups for a template
 
 ## Developer API
 

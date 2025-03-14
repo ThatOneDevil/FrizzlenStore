@@ -1,5 +1,6 @@
 package org.frizzlenpop.frizzlenShop.gui;
 
+import org.bukkit.Bukkit;
 import org.bukkit.inventory.ItemStack;
 import org.frizzlenpop.frizzlenShop.shops.Shop;
 import org.frizzlenpop.frizzlenShop.shops.ShopItem;
@@ -12,8 +13,17 @@ import java.util.UUID;
  */
 public class ShopItemData {
 
-    private final Shop shop;
-    private final ShopItem shopItem;
+    private Shop shop;
+    private ShopItem shopItem;
+    private UUID shopId;
+    private String shopName;
+    private UUID itemId;
+    private ItemStack item;
+    private double buyPrice;
+    private double sellPrice;
+    private int stock;
+    private String currency;
+    private boolean isAdminShop;
     
     /**
      * Create new shop item data
@@ -24,6 +34,62 @@ public class ShopItemData {
     public ShopItemData(Shop shop, ShopItem shopItem) {
         this.shop = shop;
         this.shopItem = shopItem;
+        this.shopId = shop.getId();
+        this.shopName = shop.getName();
+        this.itemId = shopItem.getId();
+        this.item = shopItem.getItem();
+        this.buyPrice = shopItem.getBuyPrice();
+        this.sellPrice = shopItem.getSellPrice();
+        this.stock = shopItem.getStock();
+        this.currency = shopItem.getCurrency();
+        this.isAdminShop = shop.isAdminShop();
+    }
+    
+    /**
+     * Create new shop item data from individual parameters
+     *
+     * @param shopId      The shop ID
+     * @param shopName    The shop name
+     * @param itemId      The item ID
+     * @param item        The item
+     * @param buyPrice    The buy price
+     * @param sellPrice   The sell price
+     * @param stock       The stock
+     * @param currency    The currency
+     * @param isAdminShop Whether the shop is an admin shop
+     */
+    public ShopItemData(UUID shopId, String shopName, UUID itemId, ItemStack item, double buyPrice, double sellPrice, int stock, String currency, boolean isAdminShop) {
+        this.shop = null; // Will be set later if needed
+        this.shopItem = null; // Will be set later if needed
+        this.shopId = shopId;
+        this.shopName = shopName;
+        this.itemId = itemId;
+        this.item = item;
+        this.buyPrice = buyPrice;
+        this.sellPrice = sellPrice;
+        this.stock = stock;
+        this.currency = currency;
+        this.isAdminShop = isAdminShop;
+    }
+    
+    /**
+     * Set the shop
+     *
+     * @param shop The shop
+     */
+    public void setShop(Shop shop) {
+        this.shop = shop;
+        if (shop != null) {
+            this.shopId = shop.getId();
+            this.shopName = shop.getName();
+            this.isAdminShop = shop.isAdminShop();
+            
+            // Try to find the matching shop item
+            ShopItem matchingItem = shop.getItem(this.itemId);
+            if (matchingItem != null) {
+                this.shopItem = matchingItem;
+            }
+        }
     }
     
     /**
@@ -50,7 +116,10 @@ public class ShopItemData {
      * @return The item
      */
     public ItemStack getItem() {
-        return shopItem.getItem();
+        if (shopItem != null) {
+            return shopItem.getItem();
+        }
+        return item;
     }
     
     /**
@@ -59,7 +128,10 @@ public class ShopItemData {
      * @return The buy price
      */
     public double getBuyPrice() {
-        return shopItem.getBuyPrice();
+        if (shopItem != null) {
+            return shopItem.getBuyPrice();
+        }
+        return buyPrice;
     }
     
     /**
@@ -68,7 +140,10 @@ public class ShopItemData {
      * @return The sell price
      */
     public double getSellPrice() {
-        return shopItem.getSellPrice();
+        if (shopItem != null) {
+            return shopItem.getSellPrice();
+        }
+        return sellPrice;
     }
     
     /**
@@ -77,7 +152,10 @@ public class ShopItemData {
      * @return The currency
      */
     public String getCurrency() {
-        return shopItem.getCurrency();
+        if (shopItem != null) {
+            return shopItem.getCurrency();
+        }
+        return currency;
     }
     
     /**
@@ -86,7 +164,10 @@ public class ShopItemData {
      * @return The stock
      */
     public int getStock() {
-        return shopItem.getStock();
+        if (shopItem != null) {
+            return shopItem.getStock();
+        }
+        return stock;
     }
     
     /**
@@ -95,7 +176,10 @@ public class ShopItemData {
      * @return The shop ID
      */
     public UUID getShopId() {
-        return shop.getId();
+        if (shop != null) {
+            return shop.getId();
+        }
+        return shopId;
     }
     
     /**
@@ -104,7 +188,10 @@ public class ShopItemData {
      * @return The item ID
      */
     public UUID getItemId() {
-        return shopItem.getId();
+        if (shopItem != null) {
+            return shopItem.getId();
+        }
+        return itemId;
     }
     
     /**
@@ -113,7 +200,10 @@ public class ShopItemData {
      * @return True if the shop is an admin shop, false otherwise
      */
     public boolean isAdminShop() {
-        return shop.isAdminShop();
+        if (shop != null) {
+            return shop.isAdminShop();
+        }
+        return isAdminShop;
     }
     
     /**
@@ -122,7 +212,10 @@ public class ShopItemData {
      * @return The shop name
      */
     public String getShopName() {
-        return shop.getName();
+        if (shop != null) {
+            return shop.getName();
+        }
+        return shopName;
     }
     
     /**
@@ -132,7 +225,10 @@ public class ShopItemData {
      * @return True if the shop has enough stock, false otherwise
      */
     public boolean hasStock(int amount) {
-        return shop.hasStock(shopItem.getItem(), amount);
+        if (shop != null && shopItem != null) {
+            return shop.hasStock(shopItem.getItem(), amount);
+        }
+        return stock == -1 || stock >= amount; // -1 means unlimited
     }
     
     /**
@@ -142,7 +238,10 @@ public class ShopItemData {
      * @return The total price
      */
     public double calculateBuyPrice(int amount) {
-        return shopItem.calculateBuyPrice(amount);
+        if (shopItem != null) {
+            return shopItem.calculateBuyPrice(amount);
+        }
+        return buyPrice * amount; // Simple multiplication for now
     }
     
     /**
@@ -152,6 +251,9 @@ public class ShopItemData {
      * @return The total price
      */
     public double calculateSellPrice(int amount) {
-        return shopItem.calculateSellPrice(amount);
+        if (shopItem != null) {
+            return shopItem.calculateSellPrice(amount);
+        }
+        return sellPrice * amount; // Simple multiplication for now
     }
 } 

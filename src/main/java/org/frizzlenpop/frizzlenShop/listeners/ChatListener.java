@@ -10,6 +10,7 @@ import org.frizzlenpop.frizzlenShop.FrizzlenShop;
 import org.frizzlenpop.frizzlenShop.shops.Shop;
 import org.frizzlenpop.frizzlenShop.shops.ShopItem;
 import org.frizzlenpop.frizzlenShop.utils.MessageUtils;
+import org.frizzlenpop.frizzlenShop.gui.ShopSettingsMenuHandler;
 
 import java.util.HashMap;
 import java.util.List;
@@ -76,67 +77,73 @@ public class ChatListener implements Listener {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
         
-        // Check if the player has a pending action
-        boolean hasPendingAction = pendingActions.containsKey(playerId);
-        boolean hasCustomAction = customActionHandlers.containsKey(playerId);
-        
-        if (!hasPendingAction && !hasCustomAction) {
-            return;
-        }
-        
-        // Cancel the chat event so it doesn't appear in public chat
-        event.setCancelled(true);
-        
-        String message = event.getMessage();
-        
-        // Check if the player wants to cancel the operation
-        if (message.equalsIgnoreCase("cancel")) {
+        // Check if player has a pending action
+        if (pendingActions.containsKey(playerId)) {
+            // Cancel the chat message
+            event.setCancelled(true);
+            
+            String message = event.getMessage();
+            
+            // Check if player wants to cancel
+            if (message.equalsIgnoreCase("cancel")) {
+                pendingActions.remove(playerId);
+                MessageUtils.sendMessage(player, "&cOperation cancelled.");
+                return;
+            }
+            
+            // Get the action
+            ChatAction action = pendingActions.get(playerId);
+            
+            // Handle the action based on type
+            switch (action.getType()) {
+                case CREATE_ADMIN_SHOP:
+                    handleCreateAdminShop(player, message);
+                    break;
+                case CREATE_PLAYER_SHOP:
+                    handleCreatePlayerShop(player, message);
+                    break;
+                case SET_SHOP_DESCRIPTION:
+                    handleSetShopDescription(player, message, action);
+                    break;
+                case SET_ITEM_PRICE:
+                    handleSetItemPrice(player, message, action);
+                    break;
+                case ADD_SHOP_ITEM:
+                    handleAddShopItem(player, message, action);
+                    break;
+                case SET_SHOP_CATEGORY:
+                    handleSetShopCategory(player, message, action);
+                    break;
+                case SET_SHOP_TAX_RATE:
+                    handleSetShopTaxRate(player, message, action);
+                    break;
+                default:
+                    MessageUtils.sendErrorMessage(player, "Unknown action type.");
+                    break;
+            }
+            
+            // Remove the pending action
             pendingActions.remove(playerId);
-            customActionHandlers.remove(playerId);
-            MessageUtils.sendMessage(player, "&cOperation cancelled.");
-            return;
-        }
-        
-        // Handle custom action if present
-        if (hasCustomAction) {
+        } else if (customActionHandlers.containsKey(playerId)) {
+            // Cancel the chat message
+            event.setCancelled(true);
+            
+            String message = event.getMessage();
+            
+            // Check if player wants to cancel
+            if (message.equalsIgnoreCase("cancel")) {
+                customActionHandlers.remove(playerId);
+                MessageUtils.sendMessage(player, "&cOperation cancelled.");
+                return;
+            }
+            
+            // Handle the custom action
             Consumer<String> handler = customActionHandlers.get(playerId);
             handler.accept(message);
+            
+            // Remove the custom action handler
             customActionHandlers.remove(playerId);
-            return;
         }
-        
-        // Get the pending action
-        ChatAction action = pendingActions.get(playerId);
-        
-        // Handle the action based on its type
-        switch (action.getType()) {
-            case CREATE_ADMIN_SHOP:
-                handleCreateAdminShop(player, message);
-                break;
-                
-            case CREATE_PLAYER_SHOP:
-                handleCreatePlayerShop(player, message);
-                break;
-                
-            case SET_SHOP_DESCRIPTION:
-                handleSetShopDescription(player, message, action);
-                break;
-                
-            case SET_ITEM_PRICE:
-                handleSetItemPrice(player, message, action);
-                break;
-                
-            case ADD_SHOP_ITEM:
-                handleAddShopItem(player, message, action);
-                break;
-                
-            default:
-                MessageUtils.sendErrorMessage(player, "Unknown action type. Please try again.");
-                break;
-        }
-        
-        // Remove the pending action
-        pendingActions.remove(playerId);
     }
     
     /**
@@ -317,6 +324,89 @@ public class ChatListener implements Listener {
     }
     
     /**
+     * Handles setting a shop category
+     *
+     * @param player The player
+     * @param category The category
+     * @param action The chat action
+     */
+    private void handleSetShopCategory(Player player, String category, ChatAction action) {
+        // Get the shop
+        Shop shop = plugin.getShopManager().getShop(action.getShopId());
+        if (shop == null) {
+            MessageUtils.sendErrorMessage(player, "Shop not found.");
+            return;
+        }
+        
+        // Validate category
+        String lowerCategory = category.toLowerCase();
+        List<String> validCategories = List.of("tools", "food", "potions", "armor", "valuables", "blocks", "misc");
+        if (!validCategories.contains(lowerCategory)) {
+            MessageUtils.sendErrorMessage(player, "Invalid category. Valid categories are: " + String.join(", ", validCategories));
+            return;
+        }
+        
+        // Set the category
+        shop.setCategory(lowerCategory);
+        
+        // Save the shop
+        plugin.getDatabaseManager().saveShop(shop);
+        
+        // Send success message
+        MessageUtils.sendSuccessMessage(player, "Shop category set to " + lowerCategory);
+        
+        // Reopen the shop settings menu
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            ShopSettingsMenuHandler.openShopSettingsMenu(plugin.getGuiManager(), plugin, player, shop);
+        });
+    }
+    
+    /**
+     * Handles setting a shop tax rate
+     *
+     * @param player The player
+     * @param taxRateStr The tax rate as a string
+     * @param action The chat action
+     */
+    private void handleSetShopTaxRate(Player player, String taxRateStr, ChatAction action) {
+        // Get the shop
+        Shop shop = plugin.getShopManager().getShop(action.getShopId());
+        if (shop == null) {
+            MessageUtils.sendErrorMessage(player, "Shop not found.");
+            return;
+        }
+        
+        // Parse tax rate
+        double taxRate;
+        try {
+            taxRate = Double.parseDouble(taxRateStr);
+        } catch (NumberFormatException e) {
+            MessageUtils.sendErrorMessage(player, "Invalid tax rate. Please enter a number.");
+            return;
+        }
+        
+        // Validate tax rate
+        if (taxRate < 0 || taxRate > 100) {
+            MessageUtils.sendErrorMessage(player, "Tax rate must be between 0 and 100.");
+            return;
+        }
+        
+        // Set the tax rate
+        shop.setTaxRate(taxRate);
+        
+        // Save the shop
+        plugin.getDatabaseManager().saveShop(shop);
+        
+        // Send success message
+        MessageUtils.sendSuccessMessage(player, "Shop tax rate set to " + taxRate + "%");
+        
+        // Reopen the shop settings menu
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            ShopSettingsMenuHandler.openShopSettingsMenu(plugin.getGuiManager(), plugin, player, shop);
+        });
+    }
+    
+    /**
      * Represents a pending chat action
      */
     public static class ChatAction {
@@ -396,6 +486,8 @@ public class ChatListener implements Listener {
         CREATE_PLAYER_SHOP,
         SET_SHOP_DESCRIPTION,
         SET_ITEM_PRICE,
-        ADD_SHOP_ITEM
+        ADD_SHOP_ITEM,
+        SET_SHOP_CATEGORY,
+        SET_SHOP_TAX_RATE
     }
 } 

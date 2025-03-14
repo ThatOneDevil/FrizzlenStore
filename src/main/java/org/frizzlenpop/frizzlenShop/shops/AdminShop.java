@@ -25,6 +25,11 @@ public class AdminShop implements Shop {
     private double taxRate;
     private final Map<String, Double> stats;
     private boolean open;
+    private boolean isPublic = true;
+    private String theme = "default";
+    private boolean notificationsEnabled = true;
+    private int tier = 1;
+    private String category = "misc";
 
     /**
      * Create a new admin shop
@@ -153,6 +158,9 @@ public class AdminShop implements Shop {
                 return false; // Item already exists
             }
         }
+        
+        // Set the shop ID on the item
+        shopItem.setShopId(this.id);
         
         // Add the item
         items.add(shopItem);
@@ -716,5 +724,60 @@ public class AdminShop implements Shop {
         }
         
         return items;
+    }
+
+    @Override
+    public String getOwnerName() {
+        return "Server";
+    }
+
+    @Override
+    public boolean isPublic() {
+        return isPublic;
+    }
+
+    @Override
+    public void setPublic(boolean isPublic) {
+        this.isPublic = isPublic;
+    }
+
+    @Override
+    public String getTheme() {
+        return theme != null ? theme : "default";
+    }
+
+    @Override
+    public void setTheme(String theme) {
+        this.theme = theme;
+    }
+
+    @Override
+    public boolean areNotificationsEnabled() {
+        return notificationsEnabled;
+    }
+
+    @Override
+    public void setNotificationsEnabled(boolean enabled) {
+        this.notificationsEnabled = enabled;
+    }
+
+    @Override
+    public int getTier() {
+        return tier;
+    }
+
+    @Override
+    public void setTier(int tier) {
+        this.tier = Math.max(1, Math.min(3, tier));
+    }
+
+    @Override
+    public String getCategory() {
+        return category != null ? category : "misc";
+    }
+
+    @Override
+    public void setCategory(String category) {
+        this.category = category;
     }
 } 

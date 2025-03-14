@@ -8,6 +8,7 @@ FrizzlenShop offers a wide range of features to enhance your server's economy:
 
 - **[Admin Shop System](docs/admin-shop.md)**: Server-run shops with tiered pricing for balanced game progression
 - **[Player Shop System](docs/player-shop.md)**: Allow players to create and manage their own shops
+- **[Shop Templates](docs/templates.md)**: Create, share, and use templates for quick shop setup
 - **[Dynamic Pricing](docs/dynamic-pricing.md)**: Prices that change based on supply and demand
 - **[Market Analysis](docs/market-analysis.md)**: Track market trends and suggest profitable crafting opportunities
 - **[Economy Integration](docs/economy.md)**: Seamless integration with Vault and popular economy plugins
@@ -72,20 +73,27 @@ For more detailed configuration options, see each feature's dedicated documentat
 
 ### Admin Commands
 
-- `/fs admin shop create <name>` - Creates a new admin shop
-- `/fs admin shop delete <name>` - Deletes an admin shop
+- `/fs admin shop create <n>` - Creates a new admin shop
+- `/fs admin shop delete <n>` - Deletes an admin shop
 - `/fs admin shop list` - Lists all admin shops
 - `/fs admin price tier <item> <tier>` - Sets an item's pricing tier
 - `/fs admin price set <item> <price>` - Sets a specific price for an item
 - `/fs admin stats` - Shows statistics about shops and transactions
+- `/fs admin template manage` - Opens the template management interface
+- `/fs admin template backup` - Creates a backup of all templates
+- `/fs admin template restore <backup>` - Restores templates from a backup
 
 ### Player Commands
 
-- `/fs shop create <name>` - Creates a new player shop
-- `/fs shop delete <name>` - Deletes a player shop
-- `/fs shop open <name>` - Opens a shop
+- `/fs shop create <n>` - Creates a new player shop
+- `/fs shop delete <n>` - Deletes a player shop
+- `/fs shop open <n>` - Opens a shop
 - `/fs shop list` - Lists all available shops
 - `/fs balance` - Shows your current balance
+- `/fs template` - Opens the template management interface
+- `/fs template list` - Lists all available templates
+- `/fs template create <n>` - Creates a new template
+- `/fs template import <shop>` - Creates a template from an existing shop
 
 ## Permissions
 
@@ -93,6 +101,11 @@ For more detailed configuration options, see each feature's dedicated documentat
 - `frizzlenshop.shop.create` - Ability to create player shops
 - `frizzlenshop.shop.use` - Ability to use shops
 - `frizzlenshop.shop.delete` - Ability to delete own shops
+- `frizzlenshop.templates.view` - Ability to view shop templates
+- `frizzlenshop.templates.create` - Ability to create shop templates
+- `frizzlenshop.templates.edit` - Ability to edit own templates
+- `frizzlenshop.templates.delete` - Ability to delete own templates
+- `frizzlenshop.admin.templates` - Ability to manage all templates (admin)
 
 ## API for Developers
 
@@ -107,6 +120,9 @@ ShopManager shopManager = frizzlenShop.getShopManager();
 
 // Get economy manager
 EconomyManager economyManager = frizzlenShop.getEconomyManager();
+
+// Get template manager
+TemplateManager templateManager = frizzlenShop.getTemplateManager();
 ```
 
 ## Troubleshooting
@@ -117,6 +133,7 @@ If you encounter any issues:
 2. Verify your configuration settings
 3. Ensure you have Vault and a compatible economy plugin installed
 4. For database issues, check connection settings in the config file
+5. For template issues, see the [Template Management Guide](docs/template-management.md)
 
 ## Support and Contributions
 
@@ -126,4 +143,4 @@ Contributions are welcome! Please feel free to submit a pull request.
 
 ## License
 
-FrizzlenShop is licensed under the [MIT License](LICENSE). 
+FrizzlenShop is licensed under the [MIT License](LICENSE).

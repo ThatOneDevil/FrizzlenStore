@@ -3,6 +3,7 @@ package org.frizzlenpop.frizzlenShop.commands;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -17,12 +18,18 @@ import org.frizzlenpop.frizzlenShop.shops.Shop;
 import org.frizzlenpop.frizzlenShop.shops.ShopItem;
 import org.frizzlenpop.frizzlenShop.utils.MessageUtils;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -34,7 +41,7 @@ public class ShopAdminCommand implements CommandExecutor, TabCompleter {
     private final FrizzlenShop plugin;
     private final List<String> subCommands = Arrays.asList(
             "create", "remove", "edit", "price", "reload", "logs", "tax", "maintenance",
-            "populate", "template", "globalshop"
+            "populate", "template", "globalshop", "pricing"
     );
 
     /**
@@ -88,6 +95,8 @@ public class ShopAdminCommand implements CommandExecutor, TabCompleter {
                 return handleTemplateCommand(sender, args);
             case "globalshop":
                 return handleGlobalShopCommand(sender, args);
+            case "pricing":
+                return handlePricingCommand(sender, args);
             case "shop":
                 return handleShopCommand(sender, args);
             default:
@@ -1250,5 +1259,340 @@ public class ShopAdminCommand implements CommandExecutor, TabCompleter {
 
     private String formatLocation(Location location) {
         return location.getWorld().getName() + " " + location.getBlockX() + ", " + location.getBlockY() + ", " + location.getBlockZ();
+    }
+
+    /**
+     * Handles the /shopadmin pricing command
+     *
+     * @param sender The command sender
+     * @param args   The command arguments
+     * @return True if the command was handled, false otherwise
+     */
+    private boolean handlePricingCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("frizzlenshop.admin.pricing")) {
+            MessageUtils.sendErrorMessage(sender, "You don't have permission to manage dynamic pricing.");
+            return true;
+        }
+        
+        if (args.length < 2) {
+            // Show help for pricing commands
+            MessageUtils.sendMessage(sender, "&e===== Dynamic Pricing Commands =====");
+            MessageUtils.sendMessage(sender, "&7/shopadmin pricing toggle &f- Enable or disable dynamic pricing");
+            MessageUtils.sendMessage(sender, "&7/shopadmin pricing analyze &f- Perform market analysis now");
+            MessageUtils.sendMessage(sender, "&7/shopadmin pricing updateprices &f- Update admin shop prices to reflect current market conditions");
+            MessageUtils.sendMessage(sender, "&7/shopadmin pricing reset <material> &f- Reset pricing data for a material");
+            MessageUtils.sendMessage(sender, "&7/shopadmin pricing volatility <value> &f- Set volatility multiplier");
+            MessageUtils.sendMessage(sender, "&7/shopadmin pricing interval <minutes> &f- Set analysis interval");
+            MessageUtils.sendMessage(sender, "&7/shopadmin pricing maxchange <value> &f- Set maximum price change");
+            MessageUtils.sendMessage(sender, "&7/shopadmin pricing status &f- Check dynamic pricing status");
+            return true;
+        }
+        
+        String action = args[1].toLowerCase();
+        
+        switch (action) {
+            case "toggle":
+                boolean isEnabled = plugin.getConfigManager().isDynamicPricingEnabled();
+                if (plugin.getDynamicPricingManager() != null) {
+                    plugin.getDynamicPricingManager().setDynamicPricingEnabled(!isEnabled, sender);
+                } else {
+                    plugin.getConfigManager().setDynamicPricingEnabled(!isEnabled);
+                    plugin.getConfigManager().saveConfig();
+                    
+                    if (!isEnabled) {
+                        MessageUtils.sendMessage(sender, "&aDynamic pricing has been enabled. Will take effect on next server restart.");
+                    } else {
+                        MessageUtils.sendMessage(sender, "&cDynamic pricing has been disabled.");
+                    }
+                }
+                break;
+                
+            case "analyze":
+                if (!plugin.getConfigManager().isDynamicPricingEnabled()) {
+                    MessageUtils.sendErrorMessage(sender, "Dynamic pricing is disabled. Enable it first with /shopadmin pricing toggle");
+                    return true;
+                }
+                
+                MessageUtils.sendMessage(sender, "&aPerforming market analysis...");
+                
+                // Run market analysis asynchronously
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    if (plugin.getDynamicPricingManager() != null && plugin.getDynamicPricingManager().getMarketAnalyzer() != null) {
+                        plugin.getDynamicPricingManager().getMarketAnalyzer().performMarketAnalysis();
+                        Bukkit.getScheduler().runTask(plugin, () -> {
+                            MessageUtils.sendMessage(sender, "&aMarket analysis completed successfully!");
+                        });
+                    } else {
+                        Bukkit.getScheduler().runTask(plugin, () -> {
+                            MessageUtils.sendErrorMessage(sender, "Dynamic pricing manager or market analyzer not initialized.");
+                        });
+                    }
+                });
+                break;
+                
+            case "updateprices":
+                if (!plugin.getConfigManager().isDynamicPricingEnabled()) {
+                    MessageUtils.sendErrorMessage(sender, "Dynamic pricing is disabled. Enable it first with /shopadmin pricing toggle");
+                    return true;
+                }
+                
+                if (plugin.getDynamicPricingManager() == null) {
+                    MessageUtils.sendErrorMessage(sender, "Dynamic pricing manager not initialized.");
+                    return true;
+                }
+                
+                MessageUtils.sendMessage(sender, "&aUpdating admin shop prices based on market conditions...");
+                
+                // Run price update asynchronously
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    plugin.getDynamicPricingManager().updateAdminShopPrices();
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        MessageUtils.sendMessage(sender, "&aAdmin shop prices have been updated to reflect current market conditions!");
+                    });
+                });
+                break;
+                
+            case "reset":
+                if (args.length < 3) {
+                    MessageUtils.sendErrorMessage(sender, "Usage: /shopadmin pricing reset <material>");
+                    return true;
+                }
+                
+                if (!plugin.getConfigManager().isDynamicPricingEnabled()) {
+                    MessageUtils.sendErrorMessage(sender, "Dynamic pricing is disabled. Enable it first with /shopadmin pricing toggle");
+                    return true;
+                }
+                
+                String materialName = args[2].toUpperCase();
+                try {
+                    Material material = Material.valueOf(materialName);
+                    
+                    Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                        boolean success = resetMaterialPricing(material);
+                        Bukkit.getScheduler().runTask(plugin, () -> {
+                            if (success) {
+                                MessageUtils.sendMessage(sender, "&aPricing data for " + material.name() + " has been reset.");
+                            } else {
+                                MessageUtils.sendErrorMessage(sender, "Failed to reset pricing data for " + material.name());
+                            }
+                        });
+                    });
+                } catch (IllegalArgumentException e) {
+                    MessageUtils.sendErrorMessage(sender, "Invalid material name: " + materialName);
+                }
+                break;
+                
+            case "volatility":
+                if (args.length < 3) {
+                    MessageUtils.sendMessage(sender, "&7Current volatility multiplier: &f" + plugin.getConfigManager().getVolatilityMultiplier());
+                    MessageUtils.sendMessage(sender, "&7Usage: /shopadmin pricing volatility <value>");
+                    return true;
+                }
+                
+                try {
+                    double value = Double.parseDouble(args[2]);
+                    if (value < 0.1 || value > 5.0) {
+                        MessageUtils.sendErrorMessage(sender, "Value must be between 0.1 and 5.0");
+                        return true;
+                    }
+                    
+                    plugin.getConfigManager().getConfig().set("dynamic_pricing.volatility_multiplier", value);
+                    plugin.getConfigManager().saveConfig();
+                    
+                    // Update market analyzer if available
+                    if (plugin.getDynamicPricingManager() != null && plugin.getDynamicPricingManager().getMarketAnalyzer() != null) {
+                        plugin.getDynamicPricingManager().getMarketAnalyzer().updateConfigSettings();
+                    }
+                    
+                    MessageUtils.sendMessage(sender, "&aVolatility multiplier set to " + value);
+                } catch (NumberFormatException e) {
+                    MessageUtils.sendErrorMessage(sender, "Invalid number format: " + args[2]);
+                }
+                break;
+                
+            case "interval":
+                if (args.length < 3) {
+                    MessageUtils.sendMessage(sender, "&7Current analysis interval: &f" + plugin.getConfigManager().getAnalysisInterval() + " minutes");
+                    MessageUtils.sendMessage(sender, "&7Usage: /shopadmin pricing interval <minutes>");
+                    return true;
+                }
+                
+                try {
+                    int value = Integer.parseInt(args[2]);
+                    if (value < 5 || value > 1440) {
+                        MessageUtils.sendErrorMessage(sender, "Value must be between 5 and 1440 minutes (24 hours)");
+                        return true;
+                    }
+                    
+                    plugin.getConfigManager().getConfig().set("dynamic_pricing.analysis_interval", value);
+                    plugin.getConfigManager().saveConfig();
+                    
+                    // Update market analyzer if available
+                    if (plugin.getDynamicPricingManager() != null && plugin.getDynamicPricingManager().getMarketAnalyzer() != null) {
+                        plugin.getDynamicPricingManager().getMarketAnalyzer().updateConfigSettings();
+                    }
+                    
+                    MessageUtils.sendMessage(sender, "&aAnalysis interval set to " + value + " minutes");
+                    MessageUtils.sendMessage(sender, "&7Note: This will take effect the next time the scheduler runs");
+                } catch (NumberFormatException e) {
+                    MessageUtils.sendErrorMessage(sender, "Invalid number format: " + args[2]);
+                }
+                break;
+                
+            case "maxchange":
+                if (args.length < 3) {
+                    MessageUtils.sendMessage(sender, "&7Current max price change: &f" + 
+                        (plugin.getConfigManager().getMaxPriceChange() * 100) + "%");
+                    MessageUtils.sendMessage(sender, "&7Usage: /shopadmin pricing maxchange <value>");
+                    MessageUtils.sendMessage(sender, "&7(Value is a percentage, e.g. 50 = 50%)");
+                    return true;
+                }
+                
+                try {
+                    double value = Double.parseDouble(args[2]);
+                    if (value < 1 || value > 100) {
+                        MessageUtils.sendErrorMessage(sender, "Value must be between 1 and 100 percent");
+                        return true;
+                    }
+                    
+                    // Convert percentage to decimal
+                    double decimal = value / 100.0;
+                    
+                    plugin.getConfigManager().getConfig().set("dynamic_pricing.max_price_change", decimal);
+                    plugin.getConfigManager().saveConfig();
+                    
+                    // Update market analyzer if available
+                    if (plugin.getDynamicPricingManager() != null && plugin.getDynamicPricingManager().getMarketAnalyzer() != null) {
+                        plugin.getDynamicPricingManager().getMarketAnalyzer().updateConfigSettings();
+                    }
+                    
+                    MessageUtils.sendMessage(sender, "&aMaximum price change set to " + value + "%");
+                } catch (NumberFormatException e) {
+                    MessageUtils.sendErrorMessage(sender, "Invalid number format: " + args[2]);
+                }
+                break;
+                
+            case "status":
+                boolean enabled = plugin.getConfigManager().isDynamicPricingEnabled();
+                MessageUtils.sendMessage(sender, "&e===== Dynamic Pricing Status =====");
+                MessageUtils.sendMessage(sender, "&7Status: " + (enabled ? "&aEnabled" : "&cDisabled"));
+                
+                if (enabled) {
+                    MessageUtils.sendMessage(sender, "&7Volatility Multiplier: &f" + plugin.getConfigManager().getVolatilityMultiplier());
+                    MessageUtils.sendMessage(sender, "&7Analysis Interval: &f" + plugin.getConfigManager().getAnalysisInterval() + " minutes");
+                    MessageUtils.sendMessage(sender, "&7Max Price Change: &f" + (plugin.getConfigManager().getMaxPriceChange() * 100) + "%");
+                    MessageUtils.sendMessage(sender, "&7Normalization Rate: &f" + plugin.getConfigManager().getNormalizationRate());
+                    MessageUtils.sendMessage(sender, "&7Crafting Relationships: &f" + 
+                        (plugin.getConfigManager().useCraftingRelationships() ? "Enabled" : "Disabled"));
+                    MessageUtils.sendMessage(sender, "&7Fluctuation: &f" + 
+                        (plugin.getConfigManager().isPriceFluctuationEnabled() ? "Enabled" : "Disabled"));
+                    
+                    if (plugin.getConfigManager().isPriceFluctuationEnabled()) {
+                        MessageUtils.sendMessage(sender, "&7Fluctuation Magnitude: &f" + 
+                            (plugin.getConfigManager().getFluctuationMagnitude() * 100) + "%");
+                    }
+                    
+                    // Get some market stats if available
+                    if (plugin.getDynamicPricingManager() != null && plugin.getDynamicPricingManager().getMarketAnalyzer() != null) {
+                        MessageUtils.sendMessage(sender, "");
+                        MessageUtils.sendMessage(sender, "&7Top trending items:");
+                        
+                        Map<Material, Double> trending = plugin.getDynamicPricingManager().getTrendingItems(5);
+                        if (trending.isEmpty()) {
+                            MessageUtils.sendMessage(sender, "  &7None yet - need more transaction data");
+                        } else {
+                            for (Map.Entry<Material, Double> entry : trending.entrySet()) {
+                                String trend = entry.getValue() > 0 ? "&a▲" : "&c▼";
+                                MessageUtils.sendMessage(sender, "  &f" + entry.getKey().name() + ": " + trend + 
+                                    " " + String.format("%.1f", Math.abs(entry.getValue() * 100)) + "%");
+                            }
+                        }
+                    }
+                }
+                break;
+                
+            default:
+                MessageUtils.sendErrorMessage(sender, "Unknown pricing command: " + action);
+                MessageUtils.sendMessage(sender, "&7Use /shopadmin pricing for a list of commands");
+                return true;
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Resets pricing data for a specific material
+     * 
+     * @param material The material to reset
+     * @return True if successful, false otherwise
+     */
+    private boolean resetMaterialPricing(Material material) {
+        try {
+            // Reset market trends data in database
+            Connection conn = plugin.getDatabaseManager().getConnection();
+            String tableName = plugin.getDatabaseManager().getTablePrefix() + "market_trends";
+            
+            // Delete existing entry
+            String delete = "DELETE FROM " + tableName + " WHERE material = ?";
+            PreparedStatement ps = conn.prepareStatement(delete);
+            ps.setString(1, material.toString());
+            ps.executeUpdate();
+            ps.close();
+            
+            // Insert new entry with default values
+            String insert = "INSERT INTO " + tableName + " (material, demand_index, supply_index, volatility, last_updated) VALUES (?, ?, ?, ?, ?)";
+            PreparedStatement insertPs = conn.prepareStatement(insert);
+            insertPs.setString(1, material.toString());
+            insertPs.setDouble(2, 1.0); // Neutral demand
+            insertPs.setDouble(3, 1.0); // Neutral supply
+            insertPs.setDouble(4, getMaterialDefaultVolatility(material)); // Default volatility
+            insertPs.setLong(5, System.currentTimeMillis());
+            insertPs.executeUpdate();
+            insertPs.close();
+            
+            conn.close();
+            
+            // Clear cache if available
+            if (plugin.getDynamicPricingManager() != null && plugin.getDynamicPricingManager().getMarketAnalyzer() != null) {
+                // Log cache clear
+                plugin.getLogger().info("Cleared market data cache for " + material.name());
+            }
+            
+            return true;
+        } catch (SQLException e) {
+            plugin.getLogger().severe("Error resetting pricing data: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Gets the default volatility for a material type
+     * 
+     * @param material The material
+     * @return The default volatility
+     */
+    private double getMaterialDefaultVolatility(Material material) {
+        String name = material.name();
+        
+        // Rare materials are more volatile
+        if (name.contains("DIAMOND") || name.contains("EMERALD") || 
+            name.contains("NETHERITE") || name.contains("BEACON")) {
+            return 2.0;
+        }
+        
+        // Moderately rare materials
+        if (name.contains("GOLD") || name.contains("LAPIS") || 
+            name.contains("ENDER") || name.contains("BLAZE")) {
+            return 1.5;
+        }
+        
+        // Common materials are less volatile
+        if (name.contains("STONE") || name.contains("DIRT") || 
+            name.contains("SAND") || name.contains("WOOD")) {
+            return 0.5;
+        }
+        
+        // Default volatility
+        return 1.0;
     }
 } 

@@ -26,6 +26,15 @@ public class ConfigManager {
         plugin.saveConfig();
     }
 
+    /**
+     * Gets the configuration object
+     * 
+     * @return The file configuration
+     */
+    public FileConfiguration getConfig() {
+        return config;
+    }
+
     public double getDefaultTaxRate() {
         return config.getDouble("general.default-tax-rate", 5.0);
     }
@@ -227,7 +236,54 @@ public class ConfigManager {
      * @return True if dynamic pricing is enabled, false otherwise
      */
     public boolean isDynamicPricingEnabled() {
-        return config.getBoolean("economy.dynamic-pricing.enabled", false);
+        return config.getBoolean("dynamic_pricing.enabled", false);
+    }
+
+    /**
+     * Get the dynamic pricing volatility multiplier
+     * This determines how quickly prices change based on transactions
+     *
+     * @return The volatility multiplier
+     */
+    public double getVolatilityMultiplier() {
+        return config.getDouble("dynamic_pricing.volatility_multiplier", 1.0);
+    }
+
+    /**
+     * Get the dynamic pricing analysis interval in minutes
+     * 
+     * @return The analysis interval in minutes
+     */
+    public int getAnalysisInterval() {
+        return config.getInt("dynamic_pricing.analysis_interval", 60);
+    }
+    
+    /**
+     * Get the maximum price change allowed as a percentage of base price
+     * 
+     * @return The maximum price change as a decimal (0.5 = 50%)
+     */
+    public double getMaxPriceChange() {
+        return config.getDouble("dynamic_pricing.max_price_change", 0.5);
+    }
+    
+    /**
+     * Get the normalization rate for prices
+     * This determines how quickly prices return to baseline when there's no activity
+     * 
+     * @return The normalization rate
+     */
+    public double getNormalizationRate() {
+        return config.getDouble("dynamic_pricing.normalization_rate", 0.1);
+    }
+    
+    /**
+     * Check if crafting relationships should be considered in dynamic pricing
+     * 
+     * @return True if crafting relationships are used, false otherwise
+     */
+    public boolean useCraftingRelationships() {
+        return config.getBoolean("dynamic_pricing.use_crafting_relationships", true);
     }
 
     /**
@@ -237,17 +293,27 @@ public class ConfigManager {
      * @return True if price fluctuation is enabled, false otherwise
      */
     public boolean isPriceFluctuationEnabled() {
-        return config.getBoolean("economy.price-fluctuation.enabled", false);
+        return config.getBoolean("dynamic_pricing.fluctuation.enabled", false);
     }
-
+    
     /**
-     * Get the sell price ratio
-     * This is the ratio of sell price to buy price (e.g. 0.8 means items sell for 80% of buy price)
+     * Set whether price fluctuation is enabled
      *
-     * @return The sell price ratio
+     * @param enabled True to enable price fluctuation, false to disable
      */
-    public double getSellPriceRatio() {
-        return config.getDouble("economy.sell-price-ratio", 0.8);
+    public void setPriceFluctuationEnabled(boolean enabled) {
+        config.set("dynamic_pricing.fluctuation.enabled", enabled);
+        saveConfig();
+    }
+    
+    /**
+     * Get the price fluctuation magnitude
+     * This determines how much prices can fluctuate naturally
+     * 
+     * @return The fluctuation magnitude as a decimal (0.05 = 5%)
+     */
+    public double getFluctuationMagnitude() {
+        return config.getDouble("dynamic_pricing.fluctuation.magnitude", 0.05);
     }
 
     /**
@@ -285,6 +351,15 @@ public class ConfigManager {
     public void setSellPriceRatio(double ratio) {
         config.set("economy.sell-price-ratio", ratio);
     }
+    
+    /**
+     * Get the ratio of sell price to buy price
+     *
+     * @return The sell price ratio (default: 0.75)
+     */
+    public double getSellPriceRatio() {
+        return config.getDouble("economy.sell-price-ratio", 0.75);
+    }
 
     /**
      * Set whether dynamic pricing is enabled
@@ -293,17 +368,7 @@ public class ConfigManager {
      * @param enabled Whether dynamic pricing should be enabled
      */
     public void setDynamicPricingEnabled(boolean enabled) {
-        config.set("economy.dynamic-pricing.enabled", enabled);
-    }
-
-    /**
-     * Set whether price fluctuation is enabled
-     * Price fluctuation causes prices to change regularly based on time
-     *
-     * @param enabled Whether price fluctuation should be enabled
-     */
-    public void setPriceFluctuationEnabled(boolean enabled) {
-        config.set("economy.price-fluctuation.enabled", enabled);
+        config.set("dynamic_pricing.enabled", enabled);
     }
 
     /**
@@ -492,14 +557,17 @@ public class ConfigManager {
     }
 
     /**
-     * Get the base price for a specific material
-     *
-     * @param material The material
-     * @return The base price for the material, or 0 if not configured
+     * Gets the base price for a material from configuration
+     * 
+     * @param material The material to get the price for
+     * @return The configured base price, or 0 if not configured
      */
     public double getMaterialBasePrice(org.bukkit.Material material) {
-        String path = "economy.material-prices." + material.toString().toLowerCase();
-        return config.getDouble(path, 0.0);
+        String path = "economy.material_prices." + material.toString();
+        if (config.contains(path)) {
+            return config.getDouble(path);
+        }
+        return 0.0;
     }
 
     /**

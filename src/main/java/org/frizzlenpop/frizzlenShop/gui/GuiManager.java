@@ -16,6 +16,8 @@ import org.frizzlenpop.frizzlenShop.shops.AdminShop;
 import org.frizzlenpop.frizzlenShop.shops.PlayerShop;
 import org.frizzlenpop.frizzlenShop.shops.Shop;
 import org.frizzlenpop.frizzlenShop.shops.ShopItem;
+import org.frizzlenpop.frizzlenShop.gui.AdminShopsMenuHandler;
+import org.frizzlenpop.frizzlenShop.templates.TemplateMenuHandler;
 import org.frizzlenpop.frizzlenShop.utils.MessageUtils;
 
 import java.util.*;
@@ -107,7 +109,7 @@ public class GuiManager {
     /**
      * Get the menu data for a player
      *
-     * @param playerUuid The player's UUID
+     * @param playerUuid The player UUID
      * @return The menu data, or null if not found
      */
     public MenuData getMenuData(UUID playerUuid) {
@@ -117,19 +119,33 @@ public class GuiManager {
     /**
      * Clear the menu data for a player
      *
-     * @param playerUuid The player's UUID
+     * @param playerUuid The player UUID
      */
     public void clearMenuData(UUID playerUuid) {
         menuData.remove(playerUuid);
     }
     
     /**
-     * Open the main menu
+     * Updates menu data for a player, preserving previous menu information
+     *
+     * @param playerUuid The player UUID
+     * @param newMenuData The new menu data
+     */
+    public void updateMenuData(UUID playerUuid, MenuData newMenuData) {
+        MenuData currentData = menuData.get(playerUuid);
+        if (currentData != null) {
+            // Store current menu type as previous menu type in the new menu data
+            newMenuData.setPreviousMenuType(currentData.getMenuType());
+        }
+        menuData.put(playerUuid, newMenuData);
+    }
+    
+    /**
+     * Open the main menu for a player
      *
      * @param player The player to open the menu for
      */
     public void openMainMenu(Player player) {
-        // Use the MainMenuHandler to handle the main menu
         MainMenuHandler.openMainMenu(this, plugin, player);
     }
     
@@ -164,6 +180,16 @@ public class GuiManager {
     public void openMyShopsMenu(Player player) {
         // Use the MyShopsMenuHandler to handle the my shops menu
         MyShopsMenuHandler.openMyShopsMenu(this, plugin, player);
+    }
+    
+    /**
+     * Open admin shops menu
+     *
+     * @param player The player to open the menu for
+     */
+    public void openAdminShopsMenu(Player player) {
+        // Use the AdminShopsMenuHandler to handle the admin shops menu
+        AdminShopsMenuHandler.openAdminShopsMenu(this, plugin, player);
     }
     
     /**
@@ -278,6 +304,16 @@ public class GuiManager {
     }
     
     /**
+     * Open template management menu
+     *
+     * @param player The player to open the menu for
+     */
+    public void openTemplateManagementMenu(Player player) {
+        // Use the TemplateMenuHandler to open the template management menu
+        TemplateMenuHandler.openTemplateManagementMenu(this, plugin, player);
+    }
+    
+    /**
      * Handle click in any menu
      *
      * @param player The player who clicked
@@ -290,60 +326,101 @@ public class GuiManager {
         MenuData data = menuData.get(playerUuid);
         
         if (data == null) {
+            plugin.getLogger().warning("No menu data found for player " + player.getName());
             return false;
         }
         
-        switch (data.getMenuType()) {
-            case MAIN_MENU:
-                return MainMenuHandler.handleClick(this, plugin, player, slot);
-                
-            case CATEGORY_MENU:
-                return CategoryMenuHandler.handleClick(this, plugin, player, slot, data);
-                
-            case ITEM_DETAILS_MENU:
-                return ItemDetailsMenuHandler.handleClick(this, plugin, player, slot, data);
-                
-            case MY_SHOPS_MENU:
-                return MyShopsMenuHandler.handleClick(this, plugin, player, slot);
-                
-            case CREATE_SHOP_MENU:
-                return CreateShopMenuHandler.handleClick(this, plugin, player, slot, data);
-                
-            case SHOP_ADMIN_MENU:
-                return ShopAdminMenuHandler.handleClick(this, plugin, player, slot);
-                
-            case ADMIN_SHOP_MANAGEMENT:
-                return ShopAdminMenuHandler.handleAdminShopManagementClick(this, plugin, player, slot, data);
-                
-            case SHOP_MANAGEMENT:
-                return ShopManagementMenuHandler.handleClick(this, plugin, player, slot, data);
-                
-            case ITEM_MANAGEMENT:
-                return ItemManagementMenuHandler.handleClick(this, plugin, player, slot, data, clickType);
-                
-            case SHOP_ITEMS:
-                return ShopItemsMenuHandler.handleClick(this, plugin, player, slot, data);
-                
-            case ADMIN_BULK_ITEM_MANAGEMENT:
-                return ShopAdminMenuHandler.handleBulkItemManagementClick(this, plugin, player, slot);
-                
-            case PRICE_MANAGEMENT:
-                return ShopAdminMenuHandler.handlePriceManagementClick(this, plugin, player, slot, clickType);
-                
-            case TAX_MANAGEMENT:
-                return ShopAdminMenuHandler.handleTaxManagementClick(this, plugin, player, slot, clickType);
-                
-            case SHOP_STATISTICS:
-                return ShopAdminMenuHandler.handleStatisticsMenuClick(this, plugin, player, slot, clickType);
-                
-            case MARKET_TRENDS:
-                return ShopAdminMenuHandler.handleMarketTrendsClick(this, plugin, player, slot);
-                
-            case CRAFTING_OPPORTUNITIES:
-                return ShopAdminMenuHandler.handleCraftingOpportunitiesClick(this, plugin, player, slot);
-                
-            default:
-                return false;
+        // Debug log which menu type we're handling
+        plugin.getLogger().info("Handling click in " + data.getMenuType() + " menu at slot " + slot);
+        
+        try {
+            switch (data.getMenuType()) {
+                case MAIN_MENU:
+                    return MainMenuHandler.handleClick(this, plugin, player, slot);
+                    
+                case CATEGORY_MENU:
+                    return CategoryMenuHandler.handleClick(this, plugin, player, slot, data);
+                    
+                case ITEM_DETAILS_MENU:
+                    return ItemDetailsMenuHandler.handleClick(this, plugin, player, slot, data);
+                    
+                case MY_SHOPS_MENU:
+                    return MyShopsMenuHandler.handleClick(this, plugin, player, slot);
+                    
+                case ADMIN_SHOPS_MENU:
+                    return AdminShopsMenuHandler.handleClick(this, plugin, player, slot, data);
+                    
+                case CREATE_SHOP_MENU:
+                    return CreateShopMenuHandler.handleClick(this, plugin, player, slot, data);
+                    
+                case SHOP_ADMIN_MENU:
+                    return ShopAdminMenuHandler.handleClick(this, plugin, player, slot);
+                    
+                case ADMIN_SHOP_MANAGEMENT:
+                    return ShopAdminMenuHandler.handleAdminShopManagementClick(this, plugin, player, slot, data);
+                    
+                case SHOP_MANAGEMENT:
+                    return ShopManagementMenuHandler.handleClick(this, plugin, player, slot, data);
+                    
+                case ITEM_MANAGEMENT:
+                    return ItemManagementMenuHandler.handleClick(this, plugin, player, slot, data, clickType);
+                    
+                case SHOP_ITEMS:
+                    return ShopItemsMenuHandler.handleClick(this, plugin, player, slot, data);
+                    
+                case ADMIN_BULK_ITEM_MANAGEMENT:
+                    return ShopAdminMenuHandler.handleBulkItemManagementClick(this, plugin, player, slot);
+                    
+                case PRICE_MANAGEMENT:
+                    return ShopAdminMenuHandler.handlePriceManagementClick(this, plugin, player, slot, clickType);
+                    
+                case TAX_MANAGEMENT:
+                    return ShopAdminMenuHandler.handleTaxManagementClick(this, plugin, player, slot, clickType);
+                    
+                case SHOP_STATISTICS:
+                    return ShopAdminMenuHandler.handleStatisticsMenuClick(this, plugin, player, slot, clickType);
+                    
+                case MARKET_TRENDS:
+                    return ShopAdminMenuHandler.handleMarketTrendsClick(this, plugin, player, slot);
+                    
+                case CRAFTING_OPPORTUNITIES:
+                    return ShopAdminMenuHandler.handleCraftingOpportunitiesClick(this, plugin, player, slot);
+                    
+                case TEMPLATE_MANAGEMENT:
+                    return TemplateMenuHandler.handleClick(this, plugin, player, slot);
+                    
+                case TEMPLATE_ITEMS:
+                    return TemplateMenuHandler.handleTemplatesListClick(this, plugin, player, slot, data);
+                    
+                case TEMPLATE_CATEGORIES:
+                    return TemplateMenuHandler.handleTemplateCategoriesClick(this, plugin, player, slot, data);
+                    
+                case TEMPLATE_CREATION:
+                    return TemplateMenuHandler.handleTemplateCreationClick(this, plugin, player, slot, data);
+                    
+                case SHOP_BACKUP:
+                    plugin.getLogger().warning("Shop backup click handling not implemented yet");
+                    return false; // TODO: Implement backup click handling
+                    
+                case SHOP_RESTORE:
+                    plugin.getLogger().warning("Shop restore click handling not implemented yet");
+                    return false; // TODO: Implement restore click handling
+                    
+                case SHOP_SETTINGS:
+                    return ShopSettingsMenuHandler.handleClick(this, plugin, player, slot, data);
+                    
+                case QUICK_SELL_MENU:
+                    return QuickSellMenuHandler.handleClick(this, plugin, player, slot, data);
+                    
+                default:
+                    plugin.getLogger().warning("Unknown menu type: " + data.getMenuType());
+                    return false;
+            }
+        } catch (Exception e) {
+            // Log any exceptions that occur during click handling
+            plugin.getLogger().severe("Error handling click in " + data.getMenuType() + " menu: " + e.getMessage());
+            e.printStackTrace();
+            return false;
         }
     }
     
@@ -367,5 +444,96 @@ public class GuiManager {
     public void openTransactionLogsMenu(Player player) {
         // Use the TransactionLogsMenuHandler to handle the transaction logs menu
         TransactionLogsMenuHandler.openTransactionLogsMenu(this, plugin, player);
+    }
+    
+    /**
+     * Open the quick sell menu for a player
+     *
+     * @param player The player to open the menu for
+     */
+    public void openQuickSellMenu(Player player) {
+        // Use the QuickSellMenuHandler to handle the quick sell menu
+        QuickSellMenuHandler.openQuickSellMenu(this, plugin, player);
+    }
+    
+    /**
+     * Return to the previous menu for a player if available
+     *
+     * @param player The player to navigate
+     * @return True if successfully returned to a previous menu, false otherwise
+     */
+    public boolean returnToPreviousMenu(Player player) {
+        UUID playerUuid = player.getUniqueId();
+        MenuData data = menuData.get(playerUuid);
+        
+        if (data == null || !data.hasPreviousMenu()) {
+            // Default to main menu if no previous menu
+            openMainMenu(player);
+            return false;
+        }
+        
+        MenuType previousType = data.getPreviousMenuType();
+        
+        // Handle navigation based on previous menu type
+        switch (previousType) {
+            case MAIN_MENU:
+                openMainMenu(player);
+                break;
+                
+            case SHOP_ADMIN_MENU:
+                openShopAdminMenu(player);
+                break;
+                
+            case ADMIN_SHOPS_MENU:
+                openAdminShopsMenu(player);
+                break;
+                
+            case MY_SHOPS_MENU:
+                openMyShopsMenu(player);
+                break;
+                
+            case CATEGORY_MENU:
+                // We would need category info to return to the correct category
+                // Default to main menu if we can't get it
+                String category = data.getString("previous_category");
+                int page = data.getInt("previous_page");
+                if (category != null) {
+                    openCategoryMenu(player, category, page > 0 ? page : 1);
+                } else {
+                    openMainMenu(player);
+                }
+                break;
+                
+            case SHOP_MANAGEMENT:
+                UUID shopId = data.getUUID("previous_shop_id");
+                if (shopId != null) {
+                    openShopManagementMenu(player, shopId);
+                } else {
+                    openMyShopsMenu(player);
+                }
+                break;
+                
+            case SHOP_ITEMS:
+                UUID itemsShopId = data.getUUID("id");
+                if (itemsShopId != null) {
+                    // Get the shop
+                    Shop shop = plugin.getShopManager().getShop(itemsShopId);
+                    if (shop != null) {
+                        // Create a new menu to view shop items
+                        ShopItemsMenuHandler.openShopItemsMenu(this, plugin, player, shop);
+                        return true;
+                    }
+                }
+                // Fallback to admin shops
+                openAdminShopsMenu(player);
+                break;
+                
+            default:
+                // Default to main menu for any unhandled menu type
+                openMainMenu(player);
+                break;
+        }
+        
+        return true;
     }
 } 
